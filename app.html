@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Serenity App | Track Your Wellness Journey</title>
+<meta name="description" content="The Serenity app is your personal wellness companion — track habits, log meals, journal daily, and stay connected with Caroline. Exclusively for Serenity of Body and Mind clients.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  /* ── APP PAGE SPECIFIC ── */
+  .app-hero {
+    background: linear-gradient(145deg, #1a3830 0%, #2c5548 50%, #3d6b5a 100%);
+    padding: 140px 24px 100px;
+    position: relative;
+    overflow: hidden;
+  }
+  .app-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 90% 10%, rgba(200,169,110,.15) 0%, transparent 45%),
+      radial-gradient(ellipse at 10% 90%, rgba(122,158,138,.15) 0%, transparent 45%);
+    pointer-events: none;
+  }
+  .app-hero-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 460px;
+    gap: 64px;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+  }
+  .app-hero-eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(200,169,110,.85);
+    margin-bottom: 20px;
+    display: block;
+  }
+  .app-hero-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(38px, 5vw, 62px);
+    font-weight: 300;
+    color: #fff;
+    line-height: 1.1;
+    margin-bottom: 22px;
+  }
+  .app-hero-title em { color: #e8d5a8; font-style: italic; }
+  .app-hero-sub {
+    font-size: 17px;
+    color: rgba(255,255,255,.72);
+    line-height: 1.8;
+    margin-bottom: 36px;
+    font-weight: 300;
+    max-width: 480px;
+  }
+  .app-hero-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: rgba(255,255,255,.45);
+    margin-top: 20px;
+  }
+  .app-hero-note::before {
+    content: '✦';
+    color: rgba(200,169,110,.6);
+  }
+
+  /* Phone mockup */
+  .phone-wrap {
+    display: flex;
+    justify-content: center;
+    position: relative;
+  }
+  .phone {
+    width: 280px;
+    background: #0d1a17;
+    border-radius: 44px;
+    padding: 14px;
+    box-shadow: 0 32px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08);
+    position: relative;
+  }
+  .phone-notch {
+    width: 100px;
+    height: 28px;
+    background: #0d1a17;
+    border-radius: 0 0 20px 20px;
+    margin: 0 auto 8px;
+    position: relative;
+    z-index: 10;
+  }
+  .phone-screen {
+    background: #f2f7f5;
+    border-radius: 32px;
+    overflow: hidden;
+    min-height: 520px;
+  }
+  .phone-nav {
+    background: rgba(242,247,245,.95);
+    padding: 12px 16px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(61,125,107,.1);
+  }
+  .phone-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 17px;
+    color: #3d7d6b;
+    font-style: italic;
+    font-weight: 400;
+  }
+  .phone-badge {
+    font-size: 10px;
+    background: rgba(61,125,107,.1);
+    color: #3d7d6b;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .phone-body { padding: 16px; }
+  .phone-greeting-date {
+    font-size: 9px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #7a9e94;
+    margin-bottom: 3px;
+  }
+  .phone-greeting {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 300;
+    color: #1a2e28;
+    margin-bottom: 12px;
+  }
+  .phone-greeting em { color: #3d7d6b; font-style: italic; }
+  .phone-streak {
+    background: linear-gradient(135deg, #3d7d6b, #2c6357);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    color: #fff;
+  }
+  .phone-streak-label { font-size: 12px; font-weight: 500; opacity: .9; }
+  .phone-streak-sub { font-size: 9px; opacity: .65; margin-top: 1px; }
+  .phone-streak-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    font-weight: 300;
+    opacity: .9;
+    line-height: 1;
+  }
+  .phone-habits { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .phone-habit {
+    background: #fff;
+    border-radius: 10px;
+    padding: 10px;
+    border: 1px solid rgba(61,125,107,.1);
+  }
+  .phone-habit-icon { font-size: 14px; margin-bottom: 4px; }
+  .phone-habit-name { font-size: 9px; font-weight: 500; color: #1a2e28; margin-bottom: 6px; }
+  .phone-habit-bar {
+    height: 3px;
+    background: rgba(61,125,107,.12);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .phone-habit-fill { height: 100%; border-radius: 3px; }
+  .phone-tab-bar {
+    display: flex;
+    border-top: 1px solid rgba(61,125,107,.1);
+    background: rgba(242,247,245,.98);
+    padding: 8px 0 4px;
+  }
+  .phone-tab {
+    flex: 1;
+    text-align: center;
+    font-size: 8px;
+    color: #7a9e94;
+    padding: 2px;
+  }
+  .phone-tab.active { color: #3d7d6b; font-weight: 600; }
+  .phone-tab-icon { font-size: 14px; display: block; margin-bottom: 2px; }
+
+  /* floating badges */
+  .phone-float {
+    position: absolute;
+    background: #fff;
+    border-radius: 14px;
+    padding: 10px 16px;
+    box-shadow: 0 8px 32px rgba(30,70,55,.2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .phone-float-icon { font-size: 18px; }
+  .phone-float-title { font-size: 12px; font-weight: 600; color: #1a2e28; }
+  .phone-float-sub { font-size: 10px; color: #7a9e94; }
+  .float-1 { right: -40px; top: 60px; animation: floatA 4s ease-in-out infinite; }
+  .float-2 { left: -48px; bottom: 100px; animation: floatB 4s ease-in-out infinite 1s; }
+  @keyframes floatA { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+  @keyframes floatB { 0%,100%{transform:translateY(0)} 50%{transform:translateY(8px)} }
+
+  /* features */
+  .features-section { padding: 100px 0; background: var(--mist); }
+  .features-intro { text-align: center; margin-bottom: 64px; }
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+  }
+  .feature-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 32px 28px;
+    border: 1px solid var(--pebble);
+    box-shadow: var(--shadow);
+    transition: all .3s ease;
+  }
+  .feature-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+  .feature-icon-wrap {
+    width: 52px; height: 52px;
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+  .feature-card h3 { font-size: 20px; margin-bottom: 10px; }
+  .feature-card p { font-size: 14px; color: var(--bark-m); line-height: 1.7; }
+  .feature-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-top: 14px;
+  }
+  .tag-client { background: rgba(61,125,107,.1); color: #3d7d6b; }
+  .tag-coach { background: rgba(200,169,110,.15); color: #8a6a20; }
+  .tag-both { background: rgba(107,140,138,.1); color: #3d5c52; }
+
+  /* how it works */
+  .how-section { padding: 100px 0; }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 40px; margin-top: 60px; position: relative; }
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 28px; left: 10%; right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--pebble), var(--pebble), transparent);
+  }
+  .step { text-align: center; position: relative; }
+  .step-num {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3d7d6b, #2c6357);
+    color: #fff;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px;
+    font-weight: 400;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 4px 16px rgba(61,125,107,.3);
+  }
+  .step h3 { font-size: 18px; margin-bottom: 10px; }
+  .step p { font-size: 13px; color: var(--bark-m); line-height: 1.65; }
+
+  /* coach section */
+  .coach-section {
+    padding: 100px 0;
+    background: linear-gradient(145deg, #1a3830, #2c5548);
+    color: #fff;
+  }
+  .coach-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    align-items: center;
+  }
+  .coach-text .eyebrow { color: rgba(200,169,110,.8); }
+  .coach-text h2 { color: #fff; margin-bottom: 18px; }
+  .coach-text h2 em { color: #e8d5a8; }
+  .coach-text p { color: rgba(255,255,255,.7); line-height: 1.8; margin-bottom: 16px; font-size: 15px; }
+  .coach-features { list-style: none; margin: 24px 0 36px; }
+  .coach-features li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    font-size: 14px;
+    color: rgba(255,255,255,.75);
+  }
+  .coach-features li::before { content: '✦'; color: rgba(200,169,110,.7); font-size: 10px; flex-shrink: 0; }
+  .coach-mockup {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 20px;
+    padding: 28px;
+  }
+  .coach-mockup-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.4);
+    margin-bottom: 20px;
+  }
+  .client-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+  }
+  .client-row:last-child { border-bottom: none; }
+  .client-av {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(61,125,107,.6), rgba(107,140,138,.4));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,.9);
+    flex-shrink: 0;
+  }
+  .client-name { font-size: 13px; font-weight: 500; color: rgba(255,255,255,.85); }
+  .client-goal { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 1px; }
+  .client-stats { margin-left: auto; text-align: right; flex-shrink: 0; }
+  .client-streak { font-size: 12px; font-weight: 600; color: rgba(200,169,110,.85); }
+  .client-pct { font-size: 10px; color: rgba(255,255,255,.35); margin-top: 1px; }
+
+  /* CTA */
+  .app-cta {
+    padding: 100px 0;
+    text-align: center;
+    background: var(--cream);
+  }
+
+  @media (max-width: 900px) {
+    .app-hero-inner { grid-template-columns: 1fr; }
+    .phone-wrap { display: none; }
+    .coach-grid { grid-template-columns: 1fr; }
+    .steps::before { display: none; }
+  }
+  @media (max-width: 600px) {
+    .app-hero { padding: 120px 24px 80px; }
+    .features-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav scrolled" id="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">
+      <span class="logo-serif">Serenity</span>
+      <span class="logo-sub">of Body and Mind</span>
+    </a>
+    <button class="nav-toggle" id="navToggle"><span></span><span></span><span></span></button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="programs.html">Programs</a></li>
+      <li><a href="app.html" class="active">The App</a></li>
+      <li><a href="testimonials.html">Testimonials</a></li>
+      <li><a href="blog.html">Blog</a></li>
+      <li><a href="contact.html">Contact</a></li>
+      <li><a href="contact.html" class="nav-cta">Book Free Consultation</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="app-hero">
+  <div class="app-hero-inner">
+    <div>
+      <span class="app-hero-eyebrow">Exclusively for Serenity clients</span>
+      <h1 class="app-hero-title">Your wellness journey,<br><em>always with you.</em></h1>
+      <p class="app-hero-sub">The Serenity app is your personal daily companion — track habits, log meals, write in your journal, and stay connected with Caroline, all in one beautiful place.</p>
+      <div class="hero-actions">
+        <a href="contact.html" class="btn btn-primary">Get Access — Book a Consultation</a>
+        <a href="#features" class="btn btn-ghost">See what's inside</a>
+      </div>
+      <p class="app-hero-note">Included with every coaching program. No extra cost, ever.</p>
+    </div>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="phone-nav">
+            <div class="phone-logo">serenity</div>
+            <div class="phone-badge">🌱 Sarah</div>
+          </div>
+          <div class="phone-body">
+            <div class="phone-greeting-date">Saturday, March 14</div>
+            <div class="phone-greeting">Good day, <em>Sarah</em> ✨</div>
+            <div class="phone-streak">
+              <div>
+                <div class="phone-streak-label">🔥 Current Streak</div>
+                <div class="phone-streak-sub">You're on a roll — keep it up!</div>
+              </div>
+              <div class="phone-streak-num">12</div>
+            </div>
+            <div class="phone-habits">
+              <div class="phone-habit">
+                <div class="phone-habit-icon">🌙</div>
+                <div class="phone-habit-name">Sleep · 7 hrs</div>
+                <div class="phone-habit-bar"><div class="phone-habit-fill" style="width:87%;background:#7C6FA0;"></div></div>
+              </div>
+              <div class="phone-habit">
+                <div class="phone-habit-icon">💧</div>
+                <div class="phone-habit-name">Water · 6 glasses</div>
+                <div class="phone-habit-bar"><div class="phone-habit-fill" style="width:75%;background:#5BA4CF;"></div></div>
+              </div>
+              <div class="phone-habit">
+                <div class="phone-habit-icon">🏃</div>
+                <div class="phone-habit-name">Exercise · 25 min</div>
+                <div class="phone-habit-bar"><div class="phone-habit-fill" style="width:83%;background:#E8A838;"></div></div>
+              </div>
+              <div class="phone-habit">
+                <div class="phone-habit-icon">🥗</div>
+                <div class="phone-habit-name">Nutrition · 2 meals</div>
+                <div class="phone-habit-bar"><div class="phone-habit-fill" style="width:66%;background:#6BAE75;"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-tab-bar">
+            <div class="phone-tab active"><span class="phone-tab-icon">☀️</span>Today</div>
+            <div class="phone-tab"><span class="phone-tab-icon">📓</span>Journal</div>
+            <div class="phone-tab"><span class="phone-tab-icon">✨</span>Insights</div>
+            <div class="phone-tab"><span class="phone-tab-icon">💬</span>Coach</div>
+          </div>
+        </div>
+      </div>
+      <!-- Floating badges -->
+      <div class="phone-float float-1">
+        <div class="phone-float-icon">🔥</div>
+        <div>
+          <div class="phone-float-title">12 day streak!</div>
+          <div class="phone-float-sub">Personal best</div>
+        </div>
+      </div>
+      <div class="phone-float float-2">
+        <div class="phone-float-icon">💬</div>
+        <div>
+          <div class="phone-float-title">New message</div>
+          <div class="phone-float-sub">From Caroline</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+  <div class="container">
+    <div class="features-intro">
+      <span class="eyebrow">Everything in one place</span>
+      <h2 class="section-title">Designed to replace your printed journal<br><em>and so much more</em></h2>
+      <p style="color:var(--bark-m);max-width:560px;margin:0 auto;font-size:16px;line-height:1.8;">Every Serenity coaching program used to include a printed journal. The app replaces it completely — and goes far beyond what any paper journal can do.</p>
+    </div>
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:rgba(61,125,107,.1);">📓</div>
+        <h3>Daily Journal</h3>
+        <p>Set your daily intention, log meals by time of day, track water intake, write your gratitude list, record medications, and reflect on your day — exactly like the printed journal, but always with you.</p>
+        <span class="feature-tag tag-client">For clients</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:rgba(91,164,207,.1);">💧</div>
+        <h3>Habit Tracking</h3>
+        <p>Track sleep, water, exercise, nutrition, and mood every day with simple, satisfying controls. Add custom habits specific to your program. Watch your streaks grow.</p>
+        <span class="feature-tag tag-client">For clients</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:rgba(232,168,56,.1);">✨</div>
+        <h3>AI Coaching Insights</h3>
+        <p>Powered by AI, the app analyzes your week's habits and generates personalized observations — celebrating wins, spotting patterns, and offering gentle, specific encouragement.</p>
+        <span class="feature-tag tag-both">For everyone</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:rgba(107,174,117,.1);">💬</div>
+        <h3>Direct Messaging</h3>
+        <p>Message Caroline directly inside the app. No more searching for her email or phone number — your coaching relationship lives in one place, always accessible.</p>
+        <span class="feature-tag tag-both">For everyone</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:rgba(107,76,110,.1);">📊</div>
+        <h3>Progress History</h3>
+        <p>See your 7-day and 30-day habit history at a glance. Watch your patterns emerge over time and celebrate how far you've come since day one.</p>
+        <span class="feature-tag tag-client">For clients</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:rgba(200,169,110,.15);">🌿</div>
+        <h3>Coach Dashboard</h3>
+        <p>Caroline can view your progress, read your journal entries (with your permission), leave notes, adjust your goals, manage reminder settings, and monitor your streaks — all from her own view.</p>
+        <span class="feature-tag tag-coach">For Caroline</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:rgba(232,90,74,.08);">🔔</div>
+        <h3>Smart Reminders</h3>
+        <p>Morning and evening nudges to log your habits and fill in your journal. Caroline can customize your reminder schedule based on your lifestyle and when you're most likely to engage.</p>
+        <span class="feature-tag tag-both">For everyone</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:rgba(61,125,107,.1);">🎯</div>
+        <h3>Personalized Goals</h3>
+        <p>Your daily targets aren't generic — Caroline sets and adjusts them specifically for you as your program progresses. Your sleep target, water goals, and exercise minutes evolve with you.</p>
+        <span class="feature-tag tag-coach">Set by Caroline</span>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap" style="background:rgba(91,164,207,.1);">📋</div>
+        <h3>Weekly Curriculum</h3>
+        <p>Caroline can push weekly resources, educational content, and program materials directly to your app — recipes, guides, reading material, and more, right when you need them.</p>
+        <span class="feature-tag tag-both">Coming soon</span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-section">
+  <div class="container">
+    <span class="eyebrow text-center" style="display:block;">Getting started</span>
+    <h2 class="section-title text-center">Up and running in minutes</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Book a consultation</h3>
+        <p>Your free initial consultation is where everything starts. We'll talk about your goals and find the right program for you.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Get your invite</h3>
+        <p>Once enrolled, you'll receive a personal invitation to the Serenity app with your account already set up and ready to go.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Complete onboarding</h3>
+        <p>A guided 5-step setup walks you through your goals, habits, and reminder preferences — takes less than 5 minutes.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Start your journey</h3>
+        <p>Log your first day, write your intention, and message Caroline. Your wellness journey — tracked, guided, and supported.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COACH VIEW -->
+<section class="coach-section">
+  <div class="container">
+    <div class="coach-grid">
+      <div class="coach-text">
+        <span class="eyebrow">The coach's view</span>
+        <h2>Caroline sees your<br><em>progress in real time.</em></h2>
+        <p>Unlike a paper journal that sits on your nightstand, the Serenity app means Caroline is always informed and ready to support you — without you having to remember to bring anything to your sessions.</p>
+        <ul class="coach-features">
+          <li>View each client's daily habit completion and streaks</li>
+          <li>Read journal entries to understand how clients are really feeling</li>
+          <li>Generate AI insights to guide coaching conversations</li>
+          <li>Leave private notes after each session</li>
+          <li>Adjust goals and reminder schedules as programs progress</li>
+          <li>Send messages and weekly curriculum content</li>
+          <li>See practice-wide reports across all clients</li>
+        </ul>
+        <a href="contact.html" class="btn btn-ghost">Learn about programs →</a>
+      </div>
+      <div class="coach-mockup">
+        <div class="coach-mockup-title">🌿 Coach Dashboard — Today</div>
+        <div class="client-row">
+          <div class="client-av">SM</div>
+          <div>
+            <div class="client-name">Sarah M.</div>
+            <div class="client-goal">Build energy & reduce stress</div>
+          </div>
+          <div class="client-stats">
+            <div class="client-streak">🔥 12 days</div>
+            <div class="client-pct">87% today</div>
+          </div>
+        </div>
+        <div class="client-row">
+          <div class="client-av">JT</div>
+          <div>
+            <div class="client-name">James T.</div>
+            <div class="client-goal">Lose weight & sleep better</div>
+          </div>
+          <div class="client-stats">
+            <div class="client-streak">🔥 5 days</div>
+            <div class="client-pct">62% today</div>
+          </div>
+        </div>
+        <div class="client-row">
+          <div class="client-av">PK</div>
+          <div>
+            <div class="client-name">Priya K.</div>
+            <div class="client-goal">Improve nutrition habits</div>
+          </div>
+          <div class="client-stats">
+            <div class="client-streak">🔥 21 days</div>
+            <div class="client-pct">94% today</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="app-cta">
+  <div class="container container-sm">
+    <div class="cta-leaf">🌿</div>
+    <h2 class="section-title">The app is included with<br>every coaching program.</h2>
+    <p class="cta-sub">There's no separate subscription, no extra cost, and no app store required. The Serenity app is a core part of every client experience — your digital companion for the entire journey.</p>
+    <a href="contact.html" class="btn btn-primary btn-lg">Book Your Free Consultation</a>
+    <div class="cta-contact">
+      <a href="tel:+15033547298">(503) 354-7298</a>
+      <span>·</span>
+      <a href="mailto:caroline@serenityofbodyandmind.com">caroline@serenityofbodyandmind.com</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="footer-logo"><span class="logo-serif">Serenity</span><span class="logo-sub">of Body and Mind</span></div>
+        <p class="footer-tagline">Nutritionist & Holistic Wellness Coaching<br>Portland, OR · Est. 2012</p>
+      </div>
+      <div class="footer-links">
+        <a href="about.html">About</a>
+        <a href="programs.html">Programs</a>
+        <a href="app.html">The App</a>
+        <a href="testimonials.html">Testimonials</a>
+        <a href="blog.html">Blog</a>
+        <a href="contact.html">Contact</a>
+      </div>
+      <div class="footer-contact">
+        <a href="tel:+15033547298">(503) 354-7298</a>
+        <a href="mailto:caroline@serenityofbodyandmind.com">caroline@serenityofbodyandmind.com</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 Serenity of Body and Mind, LLC. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+<script src="main.js"></script>
+</body>
+</html>
