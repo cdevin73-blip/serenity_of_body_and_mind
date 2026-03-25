@@ -6,16 +6,644 @@
 <title>Serenity of Body and Mind | Nutritionist & Holistic Wellness Coaching</title>
 <meta name="description" content="Caroline Devin is a certified Nutritionist and Holistic Wellness Coach helping you build lasting health through personalized nutrition and whole-body care. Portland, OR. Free initial consultation.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+
+/* ─── RESET ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Brand colors extracted from business card */
+  --lavender:     #C8B8D8;
+  --lavender-l:   #E0D4EC;
+  --lavender-ll:  #F0EAF8;
+  --lavender-bg:  #F5F0FA;
+  --purple-d:     #7A5C9E;
+  --purple-m:     #9478B8;
+  --purple-text:  #5A4278;
+  --purple-soft:  #B09AC8;
+  --green-d:      #4A7A4A;
+  --green-m:      #6A9A5A;
+  --green-l:      #8AB87A;
+  --sage:         #A8C090;
+  --white:        #FFFFFF;
+  --cream:        #FAF7FC;
+  --text-dark:    #3A2D50;
+  --text-mid:     #6A5880;
+  --text-light:   #9A8AAA;
+  --border:       rgba(160,120,180,0.18);
+  --shadow:       0 4px 32px rgba(90,60,120,.10);
+  --shadow-lg:    0 16px 56px rgba(90,60,120,.16);
+  --radius:       18px;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Jost', sans-serif;
+  font-weight: 300;
+  color: var(--text-dark);
+  background: var(--cream);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.75;
+}
+
+h1,h2,h3,h4 {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 400;
+  line-height: 1.15;
+  color: var(--text-dark);
+}
+em { font-style: italic; color: var(--purple-m); }
+a { color: var(--purple-m); text-decoration: none; }
+a:hover { color: var(--purple-d); }
+
+.eyebrow {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--purple-soft);
+  margin-bottom: 14px;
+  display: block;
+}
+.container { max-width: 1100px; margin: 0 auto; padding: 0 28px; }
+.container-sm { max-width: 720px; }
+.section { padding: 100px 0; }
+.bg-soft { background: var(--lavender-bg); }
+.text-center { text-align: center; }
+.section-title { font-size: clamp(28px,4vw,44px); margin-bottom: 18px; }
+
+/* ─── BUTTONS ─────────────────────────────────────────────────── */
+.btn {
+  display: inline-block;
+  padding: 14px 32px;
+  border-radius: 50px;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: 1.5px solid transparent;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--purple-d);
+  color: var(--white);
+  border-color: var(--purple-d);
+}
+.btn-primary:hover {
+  background: #4A3868;
+  border-color: var(--purple-text);
+  color: var(--white);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(90,60,120,.3);
+}
+.btn-ghost {
+  background: rgba(255,255,255,.15);
+  color: var(--white);
+  border-color: rgba(255,255,255,.5);
+}
+.btn-ghost:hover {
+  background: rgba(255,255,255,.25);
+  color: var(--white);
+  transform: translateY(-2px);
+}
+.btn-outline {
+  background: transparent;
+  color: var(--purple-d);
+  border-color: var(--purple-d);
+}
+.btn-outline:hover {
+  background: var(--purple-d);
+  color: var(--white);
+  transform: translateY(-2px);
+}
+.btn-full { width: 100%; text-align: center; }
+.btn-lg { padding: 18px 44px; font-size: 12px; }
+
+/* ─── NAV ─────────────────────────────────────────────────────── */
+.nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  padding: 0 28px;
+  transition: all 0.3s ease;
+  background: rgba(90,66,120,.55);
+  backdrop-filter: blur(14px);
+}
+.nav.scrolled {
+  background: rgba(250,247,254,.97);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 1px 24px rgba(90,60,120,.10);
+}
+.nav-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 74px;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+.nav-logo-leaf { font-size: 26px; }
+.nav-logo-text { display: flex; flex-direction: column; line-height: 1; }
+.logo-name {
+  font-family: 'Cinzel', serif;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  color: rgba(255,255,255,.95);
+  text-transform: uppercase;
+  transition: color 0.3s;
+}
+.nav.scrolled .logo-name { color: var(--purple-d); }
+.logo-tagline {
+  font-family: 'Jost', sans-serif;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.6);
+  margin-top: 3px;
+  transition: color 0.3s;
+}
+.nav.scrolled .logo-tagline { color: var(--purple-soft); }
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+}
+.nav-links a {
+  font-family: 'Jost', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,.9);
+  padding: 7px 13px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+.nav-links a:hover, .nav-links a.active { color: var(--white); background: rgba(255,255,255,.15); border-radius: 8px; }
+.nav.scrolled .nav-links a { color: var(--text-dark); }
+.nav.scrolled .nav-links a:hover, .nav.scrolled .nav-links a.active { color: var(--purple-d); background: var(--lavender-ll); }
+.nav-links .nav-cta {
+  background: var(--purple-d);
+  color: var(--white) !important;
+  border-radius: 50px;
+  padding: 10px 22px;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  margin-left: 8px;
+}
+.nav-links .nav-cta:hover { background: #4A3868; transform: translateY(-1px); }
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+.nav-toggle span { display: block; width: 24px; height: 1.5px; background: var(--text-dark); transition: all 0.3s; }
+
+/* ─── HERO ─────────────────────────────────────────────────────── */
+.hero {
+  min-height: 100vh;
+  background: linear-gradient(150deg, #5A4278 0%, #7A5C9E 45%, #9478B8 100%);
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 15% 50%, rgba(200,184,216,.12) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 20%, rgba(138,184,122,.10) 0%, transparent 45%),
+    radial-gradient(ellipse at 70% 90%, rgba(200,184,216,.08) 0%, transparent 40%);
+  pointer-events: none;
+}
+/* Subtle botanical texture */
+.hero::after {
+  content: '🌿';
+  position: absolute;
+  font-size: 400px;
+  opacity: 0.03;
+  right: -60px;
+  bottom: -60px;
+  pointer-events: none;
+  filter: grayscale(1);
+}
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 130px 28px 90px;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 64px;
+  align-items: center;
+  width: 100%;
+}
+.hero-eyebrow {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(200,184,216,.8);
+  margin-bottom: 24px;
+  display: block;
+}
+.hero-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(42px, 5.5vw, 68px);
+  font-weight: 300;
+  color: var(--white);
+  line-height: 1.08;
+  margin-bottom: 26px;
+  letter-spacing: 0.01em;
+}
+.hero-title em { color: var(--lavender-ll); font-style: italic; }
+.hero-sub {
+  font-size: 17px;
+  color: rgba(255,255,255,.68);
+  line-height: 1.82;
+  margin-bottom: 40px;
+  font-weight: 300;
+  max-width: 480px;
+}
+.hero-actions { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
+.hero-note { font-size: 12px; color: rgba(255,255,255,.38); letter-spacing: 0.04em; }
+
+/* Hero photo card */
+.hero-card {
+  position: relative;
+}
+.hero-photo-wrap {
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 24px 72px rgba(0,0,0,.4);
+  border: 1px solid rgba(255,255,255,.12);
+  position: relative;
+}
+.hero-photo-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 60%, rgba(61,40,87,.5) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+.hero-photo {
+  width: 100%;
+  display: block;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  object-position: top;
+}
+.hero-card-badge {
+  position: absolute;
+  bottom: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--white);
+  border-radius: 50px;
+  padding: 11px 24px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  z-index: 2;
+}
+.hero-card-badge-icon { font-size: 16px; }
+.hero-card-badge-text {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--purple-d);
+}
+.hero-wave {
+  position: absolute;
+  bottom: -1px; left: 0; right: 0;
+}
+.hero-wave svg { display: block; width: 100%; height: 80px; }
+
+/* ─── TRUST BAR ───────────────────────────────────────────────── */
+.trust-bar {
+  background: var(--lavender-bg);
+  padding: 64px 0;
+  border-bottom: 1px solid var(--border);
+}
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 24px;
+  text-align: center;
+}
+.trust-divider {
+  width: 1px;
+  background: var(--border);
+  margin: 0 auto;
+}
+.trust-num {
+  display: block;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 48px;
+  font-weight: 300;
+  color: var(--purple-m);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.trust-label {
+  display: block;
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-light);
+}
+
+/* ─── INTRO ───────────────────────────────────────────────────── */
+.intro { text-align: center; background: var(--white); }
+.intro-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 300;
+  font-style: italic;
+  line-height: 1.75;
+  color: var(--text-mid);
+  margin-bottom: 32px;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.intro-divider {
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--lavender), var(--purple-soft));
+  border-radius: 2px;
+  margin: 0 auto 32px;
+}
+
+/* ─── SERVICES ────────────────────────────────────────────────── */
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px,1fr));
+  gap: 22px;
+  margin-top: 56px;
+}
+.service-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 36px 28px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.service-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--lavender), var(--purple-soft), var(--green-l));
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.service-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
+.service-card:hover::before { opacity: 1; }
+.service-icon { font-size: 34px; margin-bottom: 18px; display: block; }
+.service-card h3 {
+  font-size: 20px;
+  margin-bottom: 12px;
+  color: var(--purple-d);
+}
+.service-card p { font-size: 14px; color: var(--text-mid); line-height: 1.75; }
+
+/* ─── PROGRAMS ────────────────────────────────────────────────── */
+.programs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(290px,1fr));
+  gap: 24px;
+  margin-top: 56px;
+  align-items: start;
+}
+.program-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 36px 28px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  position: relative;
+  transition: all 0.3s ease;
+}
+.program-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.program-card.featured {
+  border-color: var(--purple-m);
+  box-shadow: 0 8px 48px rgba(123,90,154,.2);
+}
+.program-badge {
+  position: absolute;
+  top: -14px; left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--purple-d), var(--purple-m));
+  color: var(--white);
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 6px 20px;
+  border-radius: 50px;
+  white-space: nowrap;
+}
+.program-tier {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.program-tier.silver { color: #8a8aaa; }
+.program-tier.gold { color: #9a7a3a; }
+.program-tier.platinum { color: var(--purple-soft); }
+.program-price {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 52px;
+  font-weight: 300;
+  color: var(--text-dark);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.program-name { font-size: 16px; font-weight: 500; color: var(--purple-d); margin-bottom: 10px; font-family: 'Jost', sans-serif; }
+.program-desc { font-size: 13px; color: var(--text-mid); margin-bottom: 24px; line-height: 1.65; }
+.program-includes { list-style: none; margin-bottom: 28px; }
+.program-includes li {
+  font-size: 13px;
+  color: var(--text-mid);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--lavender-ll);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.program-includes li::before { content: '✦'; font-size: 8px; color: var(--lavender); flex-shrink: 0; }
+.programs-note { text-align: center; margin-top: 36px; font-size: 14px; color: var(--text-mid); }
+.programs-note a { font-weight: 500; color: var(--purple-m); border-bottom: 1px solid currentColor; }
+
+/* ─── TESTIMONIAL ─────────────────────────────────────────────── */
+.testimonial-wrap {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 52px 48px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  text-align: center;
+  position: relative;
+  margin-top: 48px;
+}
+.t-quote {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 100px;
+  color: var(--lavender-ll);
+  line-height: 0.5;
+  margin-bottom: 28px;
+  display: block;
+}
+.t-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--text-dark);
+  line-height: 1.6;
+  margin-bottom: 22px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.t-author { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.16em; color: var(--text-light); }
+
+/* ─── CTA ─────────────────────────────────────────────────────── */
+.cta-wrap {
+  background: linear-gradient(150deg, #6A5290, #8A6AB0);
+  border-radius: 28px;
+  padding: 72px 48px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.cta-wrap::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(200,184,216,.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+.cta-wrap h2 { color: var(--white); margin-bottom: 16px; position: relative; }
+.cta-wrap h2 em { color: var(--lavender-ll); }
+.cta-sub { font-size: 16px; color: rgba(255,255,255,.65); margin-bottom: 36px; line-height: 1.8; max-width: 520px; margin-left: auto; margin-right: auto; position: relative; }
+.cta-contact { margin-top: 24px; display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; font-size: 13px; color: rgba(255,255,255,.4); position: relative; }
+.cta-contact a { color: var(--lavender-ll); font-weight: 400; letter-spacing: 0.02em; }
+.cta-contact a:hover { color: var(--white); }
+
+/* ─── FOOTER ──────────────────────────────────────────────────── */
+.footer {
+  background: #4A3868;
+  padding: 68px 0 32px;
+}
+.footer-inner {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 56px;
+  align-items: start;
+  margin-bottom: 48px;
+}
+.footer-logo-wrap { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.footer-logo-leaf { font-size: 28px; }
+.footer-logo-name {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  color: rgba(255,255,255,.85);
+}
+.footer-tagline { font-size: 13px; color: rgba(255,255,255,.38); line-height: 1.7; }
+.footer-links, .footer-contact { display: flex; flex-direction: column; gap: 10px; }
+.footer-links a, .footer-contact a { font-size: 13px; color: rgba(255,255,255,.45); transition: color 0.2s; }
+.footer-links a:hover, .footer-contact a:hover { color: rgba(255,255,255,.9); }
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding-top: 24px;
+  font-size: 11px;
+  color: rgba(255,255,255,.22);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+/* ─── ANIMATIONS ──────────────────────────────────────────────── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+.fade-up { animation: fadeUp 0.8s ease both; }
+.fade-up-2 { animation: fadeUp 0.8s ease 0.12s both; }
+.fade-up-3 { animation: fadeUp 0.8s ease 0.24s both; }
+
+/* ─── RESPONSIVE ──────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .hero-inner { grid-template-columns: 1fr; }
+  .hero-card { display: none; }
+  .trust-grid { grid-template-columns: repeat(2,1fr); }
+  .footer-inner { grid-template-columns: 1fr; gap: 32px; }
+}
+@media (max-width: 600px) {
+  .section { padding: 68px 0; }
+  .hero-inner { padding-top: 108px; }
+  .nav-links { display: none; flex-direction: column; position: absolute; top: 74px; left: 0; right: 0; background: var(--cream); padding: 16px 24px 24px; box-shadow: var(--shadow); gap: 4px; }
+  .nav-links.open { display: flex; }
+  .nav-toggle { display: flex; }
+  .cta-wrap { padding: 48px 28px; }
+  .testimonial-wrap { padding: 36px 24px; }
+}
+
+/* Logo image */
+.nav-logo-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.footer-logo-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+</style>
 </head>
 <body>
 
+<!-- NAV -->
 <nav class="nav" id="nav">
   <div class="nav-inner">
     <a href="index.html" class="nav-logo">
-      <span class="logo-serif">Serenity</span>
-      <span class="logo-sub">of Body and Mind</span>
+      <img src="logo.png" alt="Serenity of Body and Mind logo" class="nav-logo-img">
+      <div class="nav-logo-text">
+        <span class="logo-name">Serenity of Body and Mind</span>
+        <span class="logo-tagline">Nutrition & Holistic Wellness Coaching</span>
+      </div>
     </a>
     <button class="nav-toggle" id="navToggle" aria-label="Menu">
       <span></span><span></span><span></span>
@@ -33,122 +661,148 @@
   </div>
 </nav>
 
+<!-- HERO -->
 <section class="hero">
-  <div class="hero-bg"></div>
+  <div class="hero::before"></div>
   <div class="hero-inner">
-    <div class="hero-text">
-      <p class="hero-eyebrow">Nutritionist & Holistic Wellness Coaching</p>
-      <h1 class="hero-title">Your body knows<br><em>how to heal.</em><br>Let me show you how.</h1>
-      <p class="hero-sub">Personalized nutrition and whole-body wellness coaching that fits your real life — not someone else's.</p>
-      <div class="hero-actions">
+    <div>
+      <span class="hero-eyebrow fade-up">Nutrition & Holistic Wellness Coaching · Portland, OR</span>
+      <h1 class="hero-title fade-up-2">
+        Nourish your body.<br>
+        <em>Quiet your mind.</em><br>
+        Reclaim your life.
+      </h1>
+      <p class="hero-sub fade-up-3">Personalized nutrition and whole-body wellness coaching that fits your real life — built around you, not someone else's plan.</p>
+      <div class="hero-actions fade-up-3">
         <a href="contact.html" class="btn btn-primary">Book Your Free Consultation</a>
         <a href="programs.html" class="btn btn-ghost">View Programs</a>
       </div>
       <p class="hero-note">✦ No commitment. No pressure. Just a conversation.</p>
     </div>
     <div class="hero-card">
-      <img src="https://serenityofbodyandmind.com/__static/jdj5jdewje9gmw5qrlbleklyaunjstnv/086-crop-Devin-Caroline.jpg" alt="Caroline Devin" class="hero-photo">
-      <div class="hero-card-tag">🌿 Established 2012</div>
+      <div class="hero-photo-wrap">
+        <img src="https://serenityofbodyandmind.com/__static/jdj5jdewje9gmw5qrlbleklyaunjstnv/086-crop-Devin-Caroline.jpg"
+             alt="Caroline Devin — Nutritionist & Holistic Wellness Coach"
+             class="hero-photo">
+      </div>
+      <div class="hero-card-badge">
+        <span class="hero-card-badge-icon">🌿</span>
+        <span class="hero-card-badge-text">Established 2012</span>
+      </div>
     </div>
   </div>
   <div class="hero-wave">
-    <svg viewBox="0 0 1440 80" preserveAspectRatio="none"><path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#f8faf8"/></svg>
+    <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#F5F0FA"/>
+    </svg>
   </div>
 </section>
 
+<!-- TRUST BAR -->
 <section class="trust-bar">
   <div class="container">
     <div class="trust-grid">
-      <div class="trust-item"><span class="trust-num">13+</span><span class="trust-label">Years in practice</span></div>
-      <div class="trust-item"><span class="trust-num">3</span><span class="trust-label">Tailored programs</span></div>
-      <div class="trust-item"><span class="trust-num">100%</span><span class="trust-label">Personalized care</span></div>
-      <div class="trust-item"><span class="trust-num">Free</span><span class="trust-label">Initial consultation</span></div>
+      <div>
+        <span class="trust-num">13+</span>
+        <span class="trust-label">Years in Practice</span>
+      </div>
+      <div>
+        <span class="trust-num">3</span>
+        <span class="trust-label">Tailored Programs</span>
+      </div>
+      <div>
+        <span class="trust-num">100%</span>
+        <span class="trust-label">Personalized Care</span>
+      </div>
+      <div>
+        <span class="trust-num">Free</span>
+        <span class="trust-label">Initial Consultation</span>
+      </div>
     </div>
   </div>
 </section>
 
+<!-- INTRO -->
 <section class="intro section">
   <div class="container container-sm">
-    <p class="eyebrow">A message from Caroline</p>
-    <h2 class="section-title">I've been where you are.</h2>
-    <p class="intro-text">For years I battled weight cycles, exhaustion, and health concerns that nobody seemed to be able to solve. It wasn't until I took a hard look at what I was eating — and how it was making me feel — that everything changed. That personal transformation is why I founded Serenity of Body and Mind in 2012. I'm not here to hand you a meal plan and send you on your way. I'm here to walk this journey with you, every step.</p>
+    <span class="eyebrow">A message from Caroline</span>
+    <div class="intro-divider"></div>
+    <p class="intro-text">"For years I battled weight cycles, exhaustion, and health concerns no one could fully solve. It wasn't until I changed what I was eating — and understood why — that everything shifted. That transformation is why I do this work."</p>
     <a href="about.html" class="btn btn-outline">Read my full story →</a>
   </div>
 </section>
 
-<section class="services section bg-soft">
+<!-- SERVICES -->
+<section class="section bg-soft">
   <div class="container">
-    <p class="eyebrow text-center">How I can help</p>
+    <span class="eyebrow text-center" style="display:block;">How I can help</span>
     <h2 class="section-title text-center">Whole-person wellness,<br>built around <em>you</em></h2>
     <div class="services-grid">
       <div class="service-card">
-        <div class="service-icon">🥗</div>
+        <span class="service-icon">🥗</span>
         <h3>Personalized Nutrition</h3>
-        <p>Evidence-based nutritional guidance tailored to your unique body, lifestyle, and goals — not a generic plan.</p>
+        <p>Evidence-based nutritional guidance tailored to your unique body, lifestyle, and goals — never a generic plan.</p>
       </div>
       <div class="service-card">
-        <div class="service-icon">🧘</div>
+        <span class="service-icon">🧘</span>
         <h3>Holistic Wellness Coaching</h3>
         <p>Addressing the emotional, physical, and lifestyle factors that affect your health — because food is only part of the picture.</p>
       </div>
       <div class="service-card">
-        <div class="service-icon">🌿</div>
+        <span class="service-icon">🌿</span>
         <h3>Self-Care & Mindfulness</h3>
-        <p>Building sustainable habits around sleep, stress, movement, and self-care that support your nutrition goals.</p>
+        <p>Building sustainable habits around sleep, stress, movement, and self-care that support your nutrition goals long-term.</p>
       </div>
-      <div class="service-card">
-        <div class="service-icon">👥</div>
-        <h3>Group & Corporate Programs</h3>
-        <p>Workshops, group coaching, and corporate wellness sessions that bring holistic health to your team or community.</p>
-      </div>
+
     </div>
   </div>
 </section>
 
-<section class="programs-preview section">
+<!-- PROGRAMS -->
+<section class="section" style="background:var(--white);">
   <div class="container">
-    <p class="eyebrow text-center">Individual programs</p>
-    <h2 class="section-title text-center">Choose your path to wellness</h2>
+    <span class="eyebrow text-center" style="display:block;">Individual Programs</span>
+    <h2 class="section-title text-center">Choose your path<br>to <em>wellness</em></h2>
     <div class="programs-grid">
       <div class="program-card">
-        <div class="program-tier silver">Silver</div>
+        <div class="program-tier silver">Silver Package</div>
         <div class="program-price">$600</div>
         <div class="program-name">Six Week Feel Good Fast</div>
-        <p class="program-desc">For those ready to feel better fast and up for a real challenge.</p>
+        <p class="program-desc">For those ready to feel good fast and up for a real challenge.</p>
         <ul class="program-includes">
-          <li>7 weekly sessions</li>
-          <li>Elimination guide & recipes</li>
-          <li>Journal book</li>
-          <li>Food & self-care samples</li>
-          <li>1 book chosen for you</li>
+          <li>7 weekly sessions including initial consult</li>
+          <li>Elimination guide and recipes</li>
+          <li>Custom wellness app</li>
+          <li>Food and self-care samples</li>
+          <li>1 book chosen just for you</li>
         </ul>
         <a href="contact.html" class="btn btn-outline btn-full">Get started</a>
       </div>
       <div class="program-card featured">
-        <div class="program-badge">Most popular</div>
-        <div class="program-tier gold">Gold</div>
+        <div class="program-badge">Most Popular</div>
+        <div class="program-tier gold">Gold Package</div>
         <div class="program-price">$1,500</div>
         <div class="program-name">Three Month Healthy Start</div>
         <p class="program-desc">For those who want to understand how food affects how they feel.</p>
         <ul class="program-includes">
-          <li>13 weekly sessions</li>
-          <li>Journal book</li>
-          <li>Food & self-care samples</li>
-          <li>2 books chosen for you</li>
+          <li>13 weekly sessions including initial consult</li>
+          <li>Custom wellness app</li>
+          <li>Food and self-care samples</li>
+          <li>2 books chosen just for you</li>
           <li>Gift certificates for holistic services</li>
         </ul>
         <a href="contact.html" class="btn btn-primary btn-full">Get started</a>
       </div>
       <div class="program-card">
-        <div class="program-tier platinum">Platinum</div>
+        <div class="program-tier platinum">Platinum Package</div>
         <div class="program-price">$2,600</div>
         <div class="program-name">Six Month New You</div>
         <p class="program-desc">For those ready to fully embrace a new lifestyle and feel amazing.</p>
         <ul class="program-includes">
-          <li>27 weekly sessions</li>
-          <li>Journal book</li>
-          <li>Food & self-care samples</li>
-          <li>2 books chosen for you</li>
+          <li>27 weekly sessions including initial consult</li>
+          <li>Custom wellness app</li>
+          <li>Food and self-care samples</li>
+          <li>2 books chosen just for you</li>
           <li>Gift certificates for holistic services</li>
         </ul>
         <a href="contact.html" class="btn btn-outline btn-full">Get started</a>
@@ -158,60 +812,78 @@
   </div>
 </section>
 
-<section class="testimonial-highlight section bg-soft">
+<!-- TESTIMONIAL -->
+<section class="section bg-soft">
   <div class="container container-sm">
-    <p class="eyebrow text-center">Kind words</p>
-    <div class="testimonial-feature">
-      <div class="testimonial-quote-mark">"</div>
-      <p class="testimonial-text">Working with Caroline completely changed my relationship with food. I finally understand why I was feeling so exhausted all the time — and I have the energy now to actually live my life.</p>
-      <div class="testimonial-author">— Sarah M., Gold Program Client</div>
+    <span class="eyebrow text-center" style="display:block;">Kind Words</span>
+    <div class="testimonial-wrap">
+      <span class="t-quote">"</span>
+      <p class="t-text">Working with Caroline from Serenity of Body and Mind has been inspiring. She truly cares about her clients. With her help, I was able to bring my cholesterol levels to goal without medication — something I hadn't been able to do for over 20 years.</p>
+      <div class="t-author">— Nina G. · Program Client</div>
     </div>
-    <a href="testimonials.html" class="btn btn-outline" style="display:block;width:fit-content;margin:32px auto 0;">Read more stories →</a>
-  </div>
-</section>
-
-<section class="cta-section section">
-  <div class="container container-sm text-center">
-    <div class="cta-leaf">🌿</div>
-    <h2 class="section-title">Ready to feel like yourself again?</h2>
-    <p class="cta-sub">Your first consultation is completely free. We'll talk about where you are, where you want to be, and whether working together makes sense. No pressure, ever.</p>
-    <a href="contact.html" class="btn btn-primary btn-lg">Book Your Free Consultation</a>
-    <div class="cta-contact">
-      <a href="tel:+15033547298">(503) 354-7298</a>
-      <span>·</span>
-      <a href="mailto:caroline@serenityofbodyandmind.com">caroline@serenityofbodyandmind.com</a>
+    <div style="text-align:center;margin-top:32px;">
+      <a href="testimonials.html" class="btn btn-outline">Read more stories →</a>
     </div>
   </div>
 </section>
 
+<!-- CTA -->
+<section class="section" style="background:var(--white);">
+  <div class="container container-sm">
+    <div class="cta-wrap">
+      <h2 class="section-title">Ready to feel like<br><em>yourself again?</em></h2>
+      <p class="cta-sub">Your first consultation is completely free. We'll talk about where you are, where you want to be, and whether working together makes sense. No pressure, ever.</p>
+      <a href="contact.html" class="btn btn-primary btn-lg" style="background:var(--white);color:var(--purple-d);border-color:var(--white);">Book Your Free Consultation</a>
+      <div class="cta-contact">
+        <a href="tel:+15033547298">(503) 354-7298</a>
+        <span>·</span>
+        <a href="/cdn-cgi/l/email-protection#92f1f3e0fdfefbfcf7d2e1f7e0f7fcfbe6ebfdf4f0fdf6ebf3fcf6fffbfcf6bcf1fdff"><span class="__cf_email__" data-cfemail="d0b3b1a2bfbcb9beb590a3b5a2b5beb9a4a9bfb6b2bfb4a9b1beb4bdb9beb4feb3bfbd">[email&#160;protected]</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
 <footer class="footer">
   <div class="container">
     <div class="footer-inner">
-      <div class="footer-brand">
-        <div class="footer-logo">
-          <span class="logo-serif">Serenity</span>
-          <span class="logo-sub">of Body and Mind</span>
+      <div>
+        <div class="footer-logo-wrap">
+          <img src="logo.png" alt="Serenity of Body and Mind" class="footer-logo-img">
+          <span class="footer-logo-name">Serenity of Body and Mind</span>
         </div>
-        <p class="footer-tagline">Nutritionist & Holistic Wellness Coaching<br>Portland, OR · Est. 2012</p>
+        <p class="footer-tagline">Nutrition & Holistic Wellness Coaching<br>Portland, OR · Est. 2012</p>
       </div>
       <div class="footer-links">
         <a href="about.html">About</a>
         <a href="programs.html">Programs</a>
+        <a href="app.html">The App</a>
         <a href="testimonials.html">Testimonials</a>
         <a href="blog.html">Blog</a>
         <a href="contact.html">Contact</a>
       </div>
       <div class="footer-contact">
         <a href="tel:+15033547298">(503) 354-7298</a>
-        <a href="mailto:caroline@serenityofbodyandmind.com">caroline@serenityofbodyandmind.com</a>
+        <a href="/cdn-cgi/l/email-protection#96f5f7e4f9fafff8f3d6e5f3e4f3f8ffe2eff9f0f4f9f2eff7f8f2fbfff8f2b8f5f9fb"><span class="__cf_email__" data-cfemail="593a382b363530373c192a3c2b3c37302d20363f3b363d2038373d3430373d773a3634">[email&#160;protected]</span></a>
+        <a href="https://serenityofbodyandmind.com">serenityofbodyandmind.com</a>
       </div>
     </div>
     <div class="footer-bottom">
-      <p>© 2025 Serenity of Body and Mind, LLC. All rights reserved.</p>
+      <p>© 2025 Serenity of Body and Mind, LLC · All rights reserved</p>
     </div>
   </div>
 </footer>
 
-<script src="main.js"></script>
-</body>
-</html>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 40);
+});
+const toggle = document.getElementById('navToggle');
+const links = document.getElementById('navLinks');
+toggle.addEventListener('click', () => links.classList.toggle('open'));
+links.querySelectorAll('a').forEach(a => a.addEventListener('click', () => links.classList.remove('open')));
+
+// Scroll reveal
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e 

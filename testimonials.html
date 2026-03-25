@@ -1,74 +1,418 @@
-<!-- TESTIMONIALS -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Testimonials | Serenity of Body and Mind</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client Testimonials | Serenity of Body and Mind</title>
+<meta name="description" content="Real words from real clients of Caroline Devin, Nutritionist and Holistic Wellness Coach at Serenity of Body and Mind.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --lavender:     #C8B8D8;
+  --lavender-l:   #E0D4EC;
+  --lavender-ll:  #F0EAF8;
+  --lavender-bg:  #F5F0FA;
+  --purple-d:     #7A5C9E;
+  --purple-m:     #9478B8;
+  --purple-text:  #5A4278;
+  --purple-soft:  #B09AC8;
+  --green-d:      #4A7A4A;
+  --green-m:      #6A9A5A;
+  --white:        #FFFFFF;
+  --cream:        #FAF7FC;
+  --text-dark:    #3A2D50;
+  --text-mid:     #6A5880;
+  --text-light:   #9A8AAA;
+  --border:       rgba(160,120,180,0.18);
+  --shadow:       0 4px 32px rgba(90,60,120,.10);
+  --shadow-lg:    0 16px 56px rgba(90,60,120,.16);
+  --radius:       18px;
+}
+html { scroll-behavior: smooth; }
+body { font-family: 'Jost', sans-serif; font-weight: 300; color: var(--text-dark); background: var(--cream); -webkit-font-smoothing: antialiased; line-height: 1.75; }
+h1,h2,h3 { font-family: 'Cormorant Garamond', serif; font-weight: 400; line-height: 1.15; }
+em { font-style: italic; color: var(--purple-m); }
+a { color: var(--purple-m); text-decoration: none; }
+a:hover { color: var(--purple-d); }
+.eyebrow { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--purple-soft); margin-bottom: 14px; display: block; }
+.container { max-width: 1100px; margin: 0 auto; padding: 0 28px; }
+.container-sm { max-width: 760px; }
+.section { padding: 96px 0; }
+.text-center { text-align: center; }
+.btn { display: inline-block; padding: 14px 32px; border-radius: 50px; font-family: 'Cinzel', serif; font-size: 11px; font-weight: 400; letter-spacing: 0.14em; cursor: pointer; transition: all 0.25s ease; border: 1.5px solid transparent; }
+.btn-primary { background: var(--purple-d); color: var(--white); border-color: var(--purple-d); }
+.btn-primary:hover { background: var(--purple-text); color: var(--white); transform: translateY(-2px); box-shadow: 0 8px 28px rgba(90,60,120,.3); }
+.btn-outline { background: transparent; color: var(--purple-d); border-color: var(--purple-d); }
+.btn-outline:hover { background: var(--purple-d); color: var(--white); transform: translateY(-2px); }
+.btn-lg { padding: 18px 44px; font-size: 12px; }
+
+/* NAV */
+.nav { position: sticky; top: 0; z-index: 1000; background: rgba(250,247,254,.97); backdrop-filter: blur(16px); box-shadow: 0 1px 24px rgba(90,60,120,.08); padding: 0 28px; }
+.nav-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 74px; }
+.nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.nav-logo-leaf { font-size: 24px; }
+.logo-name { font-family: 'Cinzel', serif; font-size: 14px; font-weight: 400; letter-spacing: 0.16em; color: var(--purple-d); text-transform: uppercase; }
+.logo-tagline { font-family: 'Jost', sans-serif; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--purple-soft); margin-top: 3px; }
+.nav-logo-text { display: flex; flex-direction: column; line-height: 1; }
+.nav-links { display: flex; align-items: center; gap: 4px; list-style: none; }
+.nav-links a { font-family: 'Jost', sans-serif; font-size: 12px; font-weight: 500; letter-spacing: 0.04em; color: var(--text-dark); padding: 7px 13px; border-radius: 8px; transition: all 0.2s; }
+.nav-links a:hover, .nav-links a.active { color: var(--purple-d); background: var(--lavender-ll); }
+.nav-links .nav-cta { background: var(--purple-d); color: var(--white) !important; border-radius: 50px; padding: 10px 22px; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.12em; margin-left: 8px; }
+.nav-links .nav-cta:hover { background: var(--purple-text); transform: translateY(-1px); }
+.nav-toggle { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; }
+.nav-toggle span { display: block; width: 24px; height: 1.5px; background: var(--text-dark); }
+
+/* PAGE HERO */
+.page-hero { background: linear-gradient(150deg, #5A4278 0%, #7A5C9E 50%, #9478B8 100%); padding: 120px 28px 80px; text-align: center; }
+.page-hero h1 { color: var(--white); font-size: clamp(32px,5vw,54px); margin-bottom: 14px; }
+.page-hero h1 em { color: var(--lavender-ll); }
+.page-hero p { color: rgba(255,255,255,.65); font-size: 17px; max-width: 520px; margin: 0 auto; }
+.page-hero .eyebrow { color: rgba(200,184,216,.75); display: block; margin-bottom: 14px; }
+.hero-wave svg { display: block; width: 100%; height: 60px; }
+
+/* FEATURED TESTIMONIAL */
+.featured-t {
+  background: var(--white);
+  border-radius: 24px;
+  padding: 60px 52px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+  text-align: center;
+  margin-bottom: 64px;
+  position: relative;
+  overflow: hidden;
+}
+.featured-t::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--lavender), var(--purple-soft), var(--green-m));
+}
+.t-quote-mark {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 120px;
+  color: var(--lavender-ll);
+  line-height: 0.5;
+  margin-bottom: 28px;
+  display: block;
+}
+.featured-t-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--text-dark);
+  line-height: 1.7;
+  margin-bottom: 28px;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.featured-t-author {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--text-light);
+  text-transform: uppercase;
+}
+.featured-t-result {
+  display: inline-block;
+  margin-top: 20px;
+  background: var(--lavender-bg);
+  color: var(--purple-d);
+  font-family: 'Jost', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 20px;
+  border-radius: 50px;
+  border: 1px solid var(--lavender-l);
+}
+
+/* TESTIMONIAL CATEGORIES */
+.t-category-label {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+  margin-top: 56px;
+}
+.t-category-label::before, .t-category-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.t-category-label span {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--purple-soft);
+  white-space: nowrap;
+}
+
+/* TESTIMONIAL CARDS */
+.t-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px,1fr));
+  gap: 22px;
+  margin-bottom: 16px;
+}
+.t-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+.t-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.t-stars { color: #C8A050; font-size: 13px; letter-spacing: 3px; margin-bottom: 18px; }
+.t-card-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 19px;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--text-dark);
+  line-height: 1.7;
+  margin-bottom: 20px;
+  flex: 1;
+}
+.t-card-author {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text-light);
+  text-transform: uppercase;
+  padding-top: 16px;
+  border-top: 1px solid var(--lavender-ll);
+}
+.t-card-tag {
+  display: inline-block;
+  margin-top: 10px;
+  font-family: 'Jost', sans-serif;
+  font-size: 11px;
+  color: var(--green-d);
+  background: rgba(106,154,90,.1);
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+/* CTA */
+.t-cta {
+  background: linear-gradient(150deg, #6A5290, #8A6AB0);
+  border-radius: 24px;
+  padding: 64px 48px;
+  text-align: center;
+  margin-top: 72px;
+  position: relative;
+  overflow: hidden;
+}
+.t-cta::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, rgba(200,184,216,.15) 0%, transparent 60%); pointer-events: none; }
+.t-cta h2 { color: var(--white); font-size: clamp(26px,4vw,40px); margin-bottom: 14px; position: relative; }
+.t-cta h2 em { color: var(--lavender-ll); }
+.t-cta p { color: rgba(255,255,255,.65); font-size: 16px; margin-bottom: 32px; max-width: 480px; margin-left: auto; margin-right: auto; line-height: 1.8; position: relative; }
+.t-cta .btn { background: var(--white); color: var(--purple-d); border-color: var(--white); position: relative; }
+.t-cta .btn:hover { background: var(--lavender-ll); }
+.t-cta-contact { margin-top: 20px; font-size: 13px; color: rgba(255,255,255,.4); position: relative; }
+.t-cta-contact a { color: var(--lavender-ll); margin: 0 6px; }
+
+/* FOOTER */
+.footer { background: #4A3868; padding: 68px 0 32px; }
+.footer-inner { display: grid; grid-template-columns: 1fr auto auto; gap: 56px; align-items: start; margin-bottom: 48px; }
+.footer-logo-wrap { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.footer-logo-leaf { font-size: 26px; }
+.footer-logo-name { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.18em; color: rgba(255,255,255,.85); }
+.footer-tagline { font-size: 13px; color: rgba(255,255,255,.38); line-height: 1.7; }
+.footer-links, .footer-contact { display: flex; flex-direction: column; gap: 10px; }
+.footer-links a, .footer-contact a { font-size: 13px; color: rgba(255,255,255,.45); transition: color 0.2s; }
+.footer-links a:hover, .footer-contact a:hover { color: rgba(255,255,255,.9); }
+.footer-bottom { border-top: 1px solid rgba(255,255,255,.08); padding-top: 24px; font-size: 11px; color: rgba(255,255,255,.22); text-align: center; letter-spacing: 0.04em; }
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+@media (max-width: 768px) {
+  .featured-t { padding: 40px 28px; }
+  .t-grid { grid-template-columns: 1fr; }
+  .footer-inner { grid-template-columns: 1fr; gap: 28px; }
+  .nav-links { display: none; flex-direction: column; position: absolute; top: 74px; left: 0; right: 0; background: var(--cream); padding: 16px 24px 24px; box-shadow: var(--shadow); gap: 4px; }
+  .nav-links.open { display: flex; }
+  .nav-toggle { display: flex; }
+}
+
+/* Logo image */
+.nav-logo-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.footer-logo-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+</style>
 </head>
 <body>
-<nav class="nav scrolled" id="nav">
+
+<nav class="nav" id="nav">
   <div class="nav-inner">
-    <a href="index.html" class="nav-logo"><span class="logo-serif">Serenity</span><span class="logo-sub">of Body and Mind</span></a>
+    <a href="index.html" class="nav-logo">
+      <img src="logo.png" alt="Serenity of Body and Mind logo" class="nav-logo-img">
+      <div class="nav-logo-text">
+        <span class="logo-name">Serenity of Body and Mind</span>
+        <span class="logo-tagline">Nutrition & Holistic Wellness Coaching</span>
+      </div>
+    </a>
     <button class="nav-toggle" id="navToggle"><span></span><span></span><span></span></button>
     <ul class="nav-links" id="navLinks">
-      <li><a href="index.html">Home</a></li><li><a href="about.html">About</a></li>
-      <li><a href="programs.html">Programs</a></li><li><a href="testimonials.html" class="active">Testimonials</a></li>
-      <li><a href="blog.html">Blog</a></li><li><a href="contact.html">Contact</a></li>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="programs.html">Programs</a></li>
+      <li><a href="app.html">The App</a></li>
+      <li><a href="testimonials.html" class="active">Testimonials</a></li>
+      <li><a href="blog.html">Blog</a></li>
+      <li><a href="contact.html">Contact</a></li>
       <li><a href="contact.html" class="nav-cta">Book Free Consultation</a></li>
     </ul>
   </div>
 </nav>
+
 <div class="page-hero">
-  <h1>Client <em>Stories</em></h1>
-  <p>Real people, real transformations. Here's what they have to say.</p>
+  <span class="eyebrow">Kind Words</span>
+  <h1>Real people.<br><em>Real results.</em></h1>
+  <p>These are the stories of clients who chose to invest in their health — and never looked back.</p>
+  <div class="hero-wave">
+    <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0,30 C360,60 1080,0 1440,30 L1440,60 L0,60 Z" fill="#FAF7FC"/>
+    </svg>
+  </div>
 </div>
+
 <section class="section">
-  <div class="container">
-    <div class="testimonials-grid">
-      <div class="testimonial-card">
-        <div class="testimonial-stars">★★★★★</div>
-        <p>"Working with Caroline completely changed my relationship with food. I finally understand why I was feeling so exhausted all the time — and I have the energy now to actually live my life."</p>
-        <div class="author">— Sarah M. · Gold Program</div>
+  <div class="container container-sm">
+
+    <!-- FEATURED -->
+    <div class="featured-t">
+      <span class="t-quote-mark">"</span>
+      <p class="featured-t-text">Working with Caroline from Serenity of Body and Mind has been inspiring. She truly cares about her clients. She took the time to listen to my personal goals as well as my personal struggles and helped me make lifestyle changes to help me meet my goals. She understands how difficult it can be to make big changes and she worked with me one step at a time. I've learned that little steps can make a big impact!</p>
+      <div class="featured-t-author">— Nina G. · Program Client</div>
+      <div class="featured-t-result">✦ Brought cholesterol to goal without medication for the first time in 20+ years</div>
+    </div>
+
+    <!-- REGULAR PROGRAM TESTIMONIALS -->
+    <div class="t-category-label"><span>Coaching Program Clients</span></div>
+    <div class="t-grid">
+
+      <div class="t-card">
+        <div class="t-stars">★★★★★</div>
+        <p class="t-card-text">"I have several health issues and Caroline agreed to coach me in my quest for a vegan lifestyle. She is very responsive to my unique situation and has worked tirelessly to simplify my diet and as a result — my life. Caroline is professional yet warm. Her enthusiasm for good nutrition and a healthy lifestyle is contagious. I am very pleased with my experience — I am sure you will be as well."</p>
+        <div class="t-card-author">— Jane D. · Program Client</div>
+        <span class="t-card-tag">Vegan Lifestyle Coaching</span>
       </div>
-      <div class="testimonial-card">
-        <div class="testimonial-stars">★★★★★</div>
-        <p>"I came to Caroline after years of failed diets and feeling defeated. Within just a few weeks of her program I started feeling better than I had in a decade. She doesn't just tell you what to eat — she helps you understand why."</p>
-        <div class="author">— James T. · Platinum Program</div>
+
+      <div class="t-card">
+        <div class="t-stars">★★★★★</div>
+        <p class="t-card-text">"I have been going to Caroline as a nutritionist for three months. I had heart surgery last year and have diabetes. Ms. Devin has been very helpful in managing my diet. She doesn't judge me. She tells me again what I have to do in a calm, very business-like voice. She has helped me to understand why things need to be done her way for me to be healthy."</p>
+        <div class="t-card-author">— Roger D. · Program Client</div>
+        <span class="t-card-tag">Heart Health & Diabetes Management</span>
       </div>
-      <div class="testimonial-card">
-        <div class="testimonial-stars">★★★★★</div>
-        <p>"Caroline's approach is so different from anything I had tried before. She met me exactly where I was and never made me feel judged. My nutrition, sleep, and mood are all dramatically better."</p>
-        <div class="author">— Priya K. · Gold Program</div>
+
+    </div>
+
+    <!-- ELIMINATION DIET TESTIMONIALS -->
+    <div class="t-category-label"><span>Elimination Program Clients</span></div>
+    <div class="t-grid">
+
+      <div class="t-card">
+        <div class="t-stars">★★★★★</div>
+        <p class="t-card-text">"I felt OK before, but felt bloated and out of shape. I had a hard time sleeping. After the detox, my skin glowed like never before and I lost five pounds which made me feel much better."</p>
+        <div class="t-card-author">— Ann R. · Elimination Program</div>
+        <span class="t-card-tag">Elimination Diet</span>
       </div>
-      <div class="testimonial-card">
-        <div class="testimonial-stars">★★★★★</div>
-        <p>"The kitchen clean-out session alone was worth it. I had no idea how many things in my pantry were working against my health goals. Caroline is knowledgeable, kind, and genuinely invested in your success."</p>
-        <div class="author">— Michelle R. · Silver Program</div>
+
+      <div class="t-card">
+        <div class="t-stars">★★★★★</div>
+        <p class="t-card-text">"I have not felt healthy for most of my life and I was looking for something to give me a boost. I've gone to various weight loss groups and I've been successful most times, but I never understood why I was not motivated to continue. Caroline has made me realize how good I will feel once I complete her detox program. I am now on the right track with the right foods and plan to continue for life! Awesome program. THANK YOU!"</p>
+        <div class="t-card-author">— Sue T. · Elimination Program</div>
+        <span class="t-card-tag">Elimination Diet</span>
       </div>
-      <div class="testimonial-card">
-        <div class="testimonial-stars">★★★★★</div>
-        <p>"I started the Six Month program feeling hopeless about my health. I finished it feeling like a completely different person — and I have the tools now to keep going on my own."</p>
-        <div class="author">— David L. · Platinum Program</div>
+
+      <div class="t-card">
+        <div class="t-stars">★★★★★</div>
+        <p class="t-card-text">"Prior to the program I felt tired, lazy, and out of sync with my weight loss goals. After the detox, I feel more motivated and feel like I can really get back on track. I have more energy during the day and don't feel as hungry. I would certainly recommend this program to a friend."</p>
+        <div class="t-card-author">— Alicia T. · Elimination Program</div>
+        <span class="t-card-tag">Elimination Diet</span>
       </div>
-      <div class="testimonial-card">
-        <div class="testimonial-stars">★★★★★</div>
-        <p>"Caroline's corporate workshop was the highlight of our company wellness week. She made complex nutrition science feel accessible and actionable. Several team members started their own programs after."</p>
-        <div class="author">— HR Director · Corporate Workshop</div>
+
+    </div>
+
+    <!-- CTA -->
+    <div class="t-cta">
+      <h2>Ready to write<br><em>your own story?</em></h2>
+      <p>Your first consultation is completely free. No commitment, no pressure — just an honest conversation about your goals.</p>
+      <a href="contact.html" class="btn btn-lg">Book Your Free Consultation</a>
+      <div class="t-cta-contact">
+        <a href="tel:+15033547298">(503) 354-7298</a> ·
+        <a href="mailto:caroline@serenityofbodyandmind.com">caroline@serenityofbodyandmind.com</a>
       </div>
     </div>
-    <div style="text-align:center;margin-top:56px;">
-      <h3 style="margin-bottom:16px;font-size:28px;">Ready to write your own story?</h3>
-      <a href="contact.html" class="btn btn-primary btn-lg">Book Your Free Consultation</a>
-    </div>
+
   </div>
 </section>
-<footer class="footer"><div class="container"><div class="footer-inner">
-  <div class="footer-brand"><div class="footer-logo"><span class="logo-serif">Serenity</span><span class="logo-sub">of Body and Mind</span></div><p class="footer-tagline">Nutritionist & Holistic Wellness Coaching<br>Portland, OR · Est. 2012</p></div>
-  <div class="footer-links"><a href="about.html">About</a><a href="programs.html">Programs</a><a href="testimonials.html">Testimonials</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a></div>
-  <div class="footer-contact"><a href="tel:+15033547298">(503) 354-7298</a><a href="mailto:caroline@serenityofbodyandmind.com">caroline@serenityofbodyandmind.com</a></div>
-</div><div class="footer-bottom"><p>© 2025 Serenity of Body and Mind, LLC. All rights reserved.</p></div></div></footer>
-<script src="main.js"></script>
-</body></html>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div>
+        <div class="footer-logo-wrap">
+          <img src="logo.png" alt="Serenity of Body and Mind" class="footer-logo-img">
+          <span class="footer-logo-name">Serenity of Body and Mind</span>
+        </div>
+        <p class="footer-tagline">Nutrition & Holistic Wellness Coaching<br>Portland, OR · Est. 2012</p>
+      </div>
+      <div class="footer-links">
+        <a href="about.html">About</a>
+        <a href="programs.html">Programs</a>
+        <a href="app.html">The App</a>
+        <a href="testimonials.html">Testimonials</a>
+        <a href="blog.html">Blog</a>
+        <a href="contact.html">Contact</a>
+      </div>
+      <div class="footer-contact">
+        <a href="tel:+15033547298">(503) 354-7298</a>
+        <a href="mailto:caroline@serenityofbodyandmind.com">caroline@serenityofbodyandmind.com</a>
+        <a href="https://serenityofbodyandmind.com">serenityofbodyandmind.com</a>
+      </div>
+    </div>
+    <div class="footer-bottom"><p>© 2025 Serenity of Body and Mind, LLC · All rights reserved</p></div>
+  </div>
+</footer>
+
+<script>
+const toggle = document.getElementById('navToggle');
+const links = document.getElementById('navLinks');
+toggle.addEventListener('click', () => links.classList.toggle('open'));
+links.querySelectorAll('a').forEach(a => a.addEventListener('click', () => links.classList.remove('open')));
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.style.opacity = '1'; e.target.style.transform = 'translateY(0)'; }
+  });
+}, { threshold: 0.08 });
+document.querySelectorAll('.t-card, .featured-t').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(18px)';
+  el.style.transition = 'opacity 0.65s ease, transform 0.65s ease';
+  observer.observe(el);
+});
+</script>
+</body>
+</html>
