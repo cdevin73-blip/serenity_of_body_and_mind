@@ -1,0 +1,16 @@
+Colors:
+--lavender: #C8B8D8
+--lavender-l: #E0D4EC
+--lavender-ll: #F0EAF8
+--lavender-bg: #F5F0FA
+--purple-d: #7A5C9E
+--purple-m: #9478B8
+--purple-text: #5A4278
+--purple-soft: #B09AC8
+--green-d: #4A7A4A
+--green-m: #6A9A5A
+--white: #FFFFFF
+--cream: #FAF7FC
+--text-dark: #3A2D50
+--text-mid: #6A5880
+--text-light: #9A8AAA

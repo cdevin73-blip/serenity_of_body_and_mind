@@ -1,97 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Blog | Serenity of Body and Mind</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wellness Blog | Serenity of Body and Mind</title>
+<meta name="description" content="Tips, insights, and honest guidance from Caroline Devin on nutrition, holistic wellness, and sustainable healthy living.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
-<nav class="nav scrolled" id="nav">
+<body><nav class="nav solid" id="nav">
   <div class="nav-inner">
-    <a href="index.html" class="nav-logo"><span class="logo-serif">Serenity</span><span class="logo-sub">of Body and Mind</span></a>
+    <a href="index.html" class="nav-logo">
+      <img src="logo.png" alt="Serenity of Body and Mind" class="nav-logo-img">
+      <div class="nav-logo-text">
+        <span class="logo-name">Serenity of Body and Mind</span>
+        <span class="logo-tagline">Nutrition &amp; Holistic Wellness</span>
+      </div>
+    </a>
     <button class="nav-toggle" id="navToggle"><span></span><span></span><span></span></button>
     <ul class="nav-links" id="navLinks">
-      <li><a href="index.html">Home</a></li><li><a href="about.html">About</a></li>
-      <li><a href="programs.html">Programs</a></li><li><a href="testimonials.html">Testimonials</a></li>
-      <li><a href="blog.html" class="active">Blog</a></li><li><a href="contact.html">Contact</a></li>
+      <li><a href="index.html" >Home</a></li>
+      <li><a href="about.html" >About</a></li>
+      <li><a href="programs.html" >Programs</a></li>
+      <li><a href="app.html" >The App</a></li>
+      <li><a href="testimonials.html" >Testimonials</a></li>
+      <li><a href="blog.html" class="active">Blog</a></li>
+      <li><a href="contact.html" >Contact</a></li>
       <li><a href="contact.html" class="nav-cta">Book Free Consultation</a></li>
     </ul>
   </div>
 </nav>
 <div class="page-hero">
-  <h1>Wellness <em>Insights</em></h1>
-  <p>Practical tips, honest reflections, and evidence-based guidance from Caroline's practice.</p>
+  <span class="eyebrow">Wellness Insights</span>
+  <h1>Practical tips for<br><em>real life.</em></h1>
+  <p>Evidence-based guidance, honest reflections, and actionable wellness advice from Caroline's virtual coaching practice.</p>
+  <div class="page-wave"><svg viewBox="0 0 1440 56" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><path d="M0,28 C360,56 1080,0 1440,28 L1440,56 L0,56 Z" fill="#FAF7FC"/></svg></div>
 </div>
 <section class="section">
   <div class="container">
-    <div class="blog-grid">
-      <div class="blog-card">
-        <div class="blog-card-img">🥗</div>
-        <div class="blog-card-body">
-          <span class="blog-tag">Nutrition</span>
-          <h3>Why Elimination Diets Work — And How to Do One Safely</h3>
-          <p>Elimination diets are one of the most powerful tools for understanding how food affects your body. Here's what the science says and how to approach one thoughtfully.</p>
-          <span class="read-more">Coming soon →</span>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:26px;">
+      <div class="blog-card fade-in" style="background:var(--white);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow);transition:all .3s ease;">
+        <div style="height:180px;background:linear-gradient(135deg,var(--lavender-bg),var(--lavender-ll));display:flex;align-items:center;justify-content:center;font-size:52px;">🥗</div>
+        <div style="padding:24px;">
+          <span style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--purple-soft);margin-bottom:8px;display:block;">Nutrition</span>
+          <h3 style="font-size:20px;margin-bottom:10px;line-height:1.3;">Why Elimination Diets Work — And How to Do One Safely</h3>
+          <p style="font-size:13px;color:var(--text-mid);line-height:1.65;margin-bottom:16px;">One of the most powerful tools for understanding how food affects your body. Here's what the science says.</p>
+          <span style="font-size:11px;font-weight:500;color:var(--purple-soft);letter-spacing:0.04em;">Coming soon →</span>
         </div>
       </div>
-      <div class="blog-card">
-        <div class="blog-card-img">😴</div>
-        <div class="blog-card-body">
-          <span class="blog-tag">Self-Care</span>
-          <h3>The Sleep-Nutrition Connection Nobody Talks About</h3>
-          <p>Poor sleep doesn't just make you tired — it fundamentally changes how your body processes food and regulates hunger hormones. Let's unpack it.</p>
-          <span class="read-more">Coming soon →</span>
+      <div class="blog-card fade-in" style="background:var(--white);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow);transition:all .3s ease;">
+        <div style="height:180px;background:linear-gradient(135deg,var(--lavender-bg),var(--lavender-ll));display:flex;align-items:center;justify-content:center;font-size:52px;">😴</div>
+        <div style="padding:24px;">
+          <span style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--purple-soft);margin-bottom:8px;display:block;">Self-Care</span>
+          <h3 style="font-size:20px;margin-bottom:10px;line-height:1.3;">The Sleep-Nutrition Connection Nobody Talks About</h3>
+          <p style="font-size:13px;color:var(--text-mid);line-height:1.65;margin-bottom:16px;">Poor sleep fundamentally changes how your body processes food. Let's unpack the connection.</p>
+          <span style="font-size:11px;font-weight:500;color:var(--purple-soft);letter-spacing:0.04em;">Coming soon →</span>
         </div>
       </div>
-      <div class="blog-card">
-        <div class="blog-card-img">🛒</div>
-        <div class="blog-card-body">
-          <span class="blog-tag">Practical Tips</span>
-          <h3>How to Read a Food Label (And What to Actually Ignore)</h3>
-          <p>Food packaging is designed to confuse you. Here's a simple framework for reading labels in under 30 seconds — and what to look past entirely.</p>
-          <span class="read-more">Coming soon →</span>
+      <div class="blog-card fade-in" style="background:var(--white);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow);transition:all .3s ease;">
+        <div style="height:180px;background:linear-gradient(135deg,var(--lavender-bg),var(--lavender-ll));display:flex;align-items:center;justify-content:center;font-size:52px;">🛒</div>
+        <div style="padding:24px;">
+          <span style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--purple-soft);margin-bottom:8px;display:block;">Practical Tips</span>
+          <h3 style="font-size:20px;margin-bottom:10px;line-height:1.3;">How to Read a Food Label in Under 30 Seconds</h3>
+          <p style="font-size:13px;color:var(--text-mid);line-height:1.65;margin-bottom:16px;">Food packaging is designed to confuse you. Here's a simple framework for what to look for — and what to ignore.</p>
+          <span style="font-size:11px;font-weight:500;color:var(--purple-soft);letter-spacing:0.04em;">Coming soon →</span>
         </div>
       </div>
-      <div class="blog-card">
-        <div class="blog-card-img">💧</div>
-        <div class="blog-card-body">
-          <span class="blog-tag">Hydration</span>
-          <h3>You're Probably Not Drinking Enough Water — Here's How to Fix That</h3>
-          <p>Chronic mild dehydration affects mood, energy, digestion, and even weight. The good news: it's one of the easiest things to fix.</p>
-          <span class="read-more">Coming soon →</span>
+      <div class="blog-card fade-in" style="background:var(--white);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow);transition:all .3s ease;">
+        <div style="height:180px;background:linear-gradient(135deg,var(--lavender-bg),var(--lavender-ll));display:flex;align-items:center;justify-content:center;font-size:52px;">💧</div>
+        <div style="padding:24px;">
+          <span style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--purple-soft);margin-bottom:8px;display:block;">Hydration</span>
+          <h3 style="font-size:20px;margin-bottom:10px;line-height:1.3;">You're Probably Not Drinking Enough Water — Here's How to Fix That</h3>
+          <p style="font-size:13px;color:var(--text-mid);line-height:1.65;margin-bottom:16px;">Chronic mild dehydration affects mood, energy, and digestion. The good news: it's one of the easiest things to fix.</p>
+          <span style="font-size:11px;font-weight:500;color:var(--purple-soft);letter-spacing:0.04em;">Coming soon →</span>
         </div>
       </div>
-      <div class="blog-card">
-        <div class="blog-card-img">🧘</div>
-        <div class="blog-card-body">
-          <span class="blog-tag">Mindfulness</span>
-          <h3>Emotional Eating: Understanding It Without Judging Yourself</h3>
-          <p>Emotional eating is incredibly common — and it makes complete sense. Here's how to understand the pattern and gently shift it.</p>
-          <span class="read-more">Coming soon →</span>
+      <div class="blog-card fade-in" style="background:var(--white);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow);transition:all .3s ease;">
+        <div style="height:180px;background:linear-gradient(135deg,var(--lavender-bg),var(--lavender-ll));display:flex;align-items:center;justify-content:center;font-size:52px;">🧘</div>
+        <div style="padding:24px;">
+          <span style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--purple-soft);margin-bottom:8px;display:block;">Mindfulness</span>
+          <h3 style="font-size:20px;margin-bottom:10px;line-height:1.3;">Emotional Eating: Understanding It Without Judging Yourself</h3>
+          <p style="font-size:13px;color:var(--text-mid);line-height:1.65;margin-bottom:16px;">Emotional eating is incredibly common — and it makes complete sense. Here's how to gently shift the pattern.</p>
+          <span style="font-size:11px;font-weight:500;color:var(--purple-soft);letter-spacing:0.04em;">Coming soon →</span>
         </div>
       </div>
-      <div class="blog-card">
-        <div class="blog-card-img">🌿</div>
-        <div class="blog-card-body">
-          <span class="blog-tag">Holistic Wellness</span>
-          <h3>What "Holistic" Actually Means in Practice</h3>
-          <p>The word gets thrown around a lot. Here's what a genuinely holistic approach to health looks like in real coaching sessions.</p>
-          <span class="read-more">Coming soon →</span>
+      <div class="blog-card fade-in" style="background:var(--white);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow);transition:all .3s ease;">
+        <div style="height:180px;background:linear-gradient(135deg,var(--lavender-bg),var(--lavender-ll));display:flex;align-items:center;justify-content:center;font-size:52px;">🌿</div>
+        <div style="padding:24px;">
+          <span style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--purple-soft);margin-bottom:8px;display:block;">Holistic Wellness</span>
+          <h3 style="font-size:20px;margin-bottom:10px;line-height:1.3;">What 'Holistic' Actually Means in a Coaching Practice</h3>
+          <p style="font-size:13px;color:var(--text-mid);line-height:1.65;margin-bottom:16px;">The word gets thrown around a lot. Here's what a genuinely holistic approach looks like in real sessions.</p>
+          <span style="font-size:11px;font-weight:500;color:var(--purple-soft);letter-spacing:0.04em;">Coming soon →</span>
         </div>
       </div>
     </div>
-    <div style="text-align:center;margin-top:56px;padding:40px;background:var(--mist);border-radius:var(--radius);border:1px solid var(--pebble);">
-      <p style="font-size:15px;color:var(--bark-m);margin-bottom:20px;">Blog posts are coming soon! In the meantime, follow along or reach out directly with your questions.</p>
+    <div style="text-align:center;margin-top:52px;padding:40px;background:var(--lavender-bg);border-radius:var(--radius);border:1px solid var(--border);">
+      <p style="font-size:15px;color:var(--text-mid);margin-bottom:20px;">Blog posts coming soon! In the meantime, reach out directly with any wellness questions.</p>
       <a href="contact.html" class="btn btn-outline">Get in touch with Caroline</a>
     </div>
   </div>
 </section>
-<footer class="footer"><div class="container"><div class="footer-inner">
-  <div class="footer-brand"><div class="footer-logo"><span class="logo-serif">Serenity</span><span class="logo-sub">of Body and Mind</span></div><p class="footer-tagline">Nutritionist & Holistic Wellness Coaching<br>Portland, OR · Est. 2012</p></div>
-  <div class="footer-links"><a href="about.html">About</a><a href="programs.html">Programs</a><a href="testimonials.html">Testimonials</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a></div>
-  <div class="footer-contact"><a href="tel:+15033547298">(503) 354-7298</a><a href="mailto:caroline@serenityofbodyandmind.com">caroline@serenityofbodyandmind.com</a></div>
-</div><div class="footer-bottom"><p>© 2025 Serenity of Body and Mind, LLC. All rights reserved.</p></div></div></footer>
-<script src="main.js"></script>
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div>
+        <div class="footer-logo-wrap">
+          <img src="logo.png" alt="Serenity of Body and Mind" class="footer-logo-img">
+          <span class="footer-logo-name">Serenity of Body and Mind</span>
+        </div>
+        <p class="footer-tagline">Nutrition &amp; Holistic Wellness Coaching<br>Virtual Practice · Portland, OR · Est. 2012</p>
+      </div>
+      <div class="footer-links">
+        <a href="about.html">About</a>
+        <a href="programs.html">Programs</a>
+        <a href="app.html">The App</a>
+        <a href="testimonials.html">Testimonials</a>
+        <a href="blog.html">Blog</a>
+        <a href="contact.html">Contact</a>
+      </div>
+      <div class="footer-contact">
+        <a href="tel:+15033547298">(503) 354-7298</a>
+        <a href="mailto:caroline@serenityofbodyandmind.com">caroline@serenityofbodyandmind.com</a>
+      </div>
+    </div>
+    <div class="footer-bottom"><p>© 2025 Serenity of Body and Mind, LLC · All rights reserved · Virtual coaching available nationwide</p></div>
+  </div>
+</footer><script>
+const nav=document.getElementById('nav');
+if(nav){window.addEventListener('scroll',()=>nav.classList.toggle('scrolled',window.scrollY>40));}
+const toggle=document.getElementById('navToggle');
+const links=document.getElementById('navLinks');
+if(toggle&&links){
+  toggle.addEventListener('click',()=>links.classList.toggle('open'));
+  links.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>links.classList.remove('open')));
+}
+const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});},{threshold:0.08});
+document.querySelectorAll('.service-card,.program-card,.t-card,.blog-card,.fade-in').forEach(el=>{el.style.opacity='0';el.style.transform='translateY(18px)';el.style.transition='opacity .65s ease,transform .65s ease';obs.observe(el);});
+</script>
 </body></html>
