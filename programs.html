@@ -4,12 +4,55 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Programs & Pricing | Serenity of Body and Mind</title>
-<meta name="description" content="Three personalized virtual wellness coaching programs from Caroline Devin — Silver, Gold, and Platinum. Free initial consultation.">
+<meta name="description" content="Three personalized virtual wellness coaching programs — Silver, Gold, and Platinum. All sessions delivered online. Free initial consultation included.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<style>
+.program-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px;margin-top:52px;}
+.program-tile{background:var(--white);border-radius:22px;overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow);transition:all .3s ease;display:flex;flex-direction:column;position:relative;}
+.program-tile:hover{transform:translateY(-5px);box-shadow:var(--shadow-lg);}
+.program-tile.featured{border-color:var(--purple-m);box-shadow:0 8px 48px rgba(148,120,184,.22);}
+.tile-header{padding:32px 28px 24px;position:relative;}
+.tile-header.silver{background:linear-gradient(135deg,#F2F0F8,#E8E4F4);}
+.tile-header.gold{background:linear-gradient(135deg,#FBF5E6,#F5E8C8);}
+.tile-header.platinum{background:linear-gradient(135deg,#EDE8F5,#DDD4EE);}
+.tile-badge{position:absolute;top:-1px;right:24px;background:linear-gradient(135deg,var(--purple-d),var(--purple-m));color:var(--white);font-family:'Cinzel',serif;font-size:9px;letter-spacing:0.14em;padding:6px 16px 7px;border-radius:0 0 12px 12px;}
+.tile-tier{font-family:'Cinzel',serif;font-size:10px;letter-spacing:0.22em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.tile-tier::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;}
+.tile-tier.silver{color:#7A7AAA;} .tile-tier.silver::before{background:#8A8ABB;}
+.tile-tier.gold{color:#9A7A30;} .tile-tier.gold::before{background:#C8A050;}
+.tile-tier.platinum{color:var(--purple-soft);} .tile-tier.platinum::before{background:var(--purple-soft);}
+.tile-price{font-family:'Cormorant Garamond',serif;font-size:56px;font-weight:300;color:var(--text-dark);line-height:1;margin-bottom:6px;}
+.tile-price sup{font-size:24px;vertical-align:super;font-weight:400;opacity:.6;}
+.tile-name{font-size:15px;font-weight:500;color:var(--purple-d);margin-bottom:8px;font-family:'Jost',sans-serif;}
+.tile-tagline{font-family:'Cormorant Garamond',serif;font-size:16px;font-style:italic;color:var(--text-mid);line-height:1.5;}
+.tile-body{padding:24px 28px;flex:1;display:flex;flex-direction:column;}
+.tile-includes-label{font-family:'Cinzel',serif;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-light);margin-bottom:14px;}
+.tile-includes{list-style:none;margin-bottom:24px;flex:1;}
+.tile-includes li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--lavender-ll);font-size:14px;color:var(--text-mid);line-height:1.4;}
+.tile-includes li:last-child{border-bottom:none;}
+.tile-check{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:1px;}
+.silver .tile-check{background:rgba(138,138,187,.12);color:#7A7AAA;}
+.gold .tile-check{background:rgba(200,160,80,.12);color:#9A7A30;}
+.platinum .tile-check{background:var(--lavender-bg);color:var(--purple-soft);}
+.tile-suggested{background:var(--lavender-bg);border-radius:10px;padding:12px 16px;margin-bottom:20px;border:1px solid var(--border);}
+.tile-suggested-label{font-family:'Cinzel',serif;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--purple-soft);margin-bottom:4px;}
+.tile-suggested p{font-size:13px;color:var(--text-mid);line-height:1.55;}
+.virtual-bar{display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;padding:18px 28px;background:var(--white);border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:12px;}
+.virtual-bar-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-mid);white-space:nowrap;}
+.virtual-bar-item strong{color:var(--text-dark);font-weight:500;}
+.vbar-sep{width:1px;height:20px;background:var(--border);}
+.disclaimer-banner{background:var(--lavender-bg);border:1px solid var(--border);border-radius:14px;padding:20px 24px;display:flex;align-items:flex-start;gap:14px;margin-top:36px;}
+.disclaimer-icon{font-size:18px;flex-shrink:0;margin-top:2px;}
+.disclaimer-text{font-size:12px;color:var(--text-mid);line-height:1.75;}
+.disclaimer-text strong{color:var(--text-dark);font-weight:500;}
+@media(max-width:660px){.vbar-sep{display:none;}.tile-price{font-size:46px;}}
+</style>
 </head>
-<body><nav class="nav solid" id="nav">
+<body>
+
+<nav class="nav solid" id="nav">
   <div class="nav-inner">
     <a href="index.html" class="nav-logo">
       <img src="logo.png" alt="Serenity of Body and Mind" class="nav-logo-img">
@@ -20,13 +63,13 @@
     </a>
     <button class="nav-toggle" id="navToggle"><span></span><span></span><span></span></button>
     <ul class="nav-links" id="navLinks">
-      <li><a href="index.html" >Home</a></li>
-      <li><a href="about.html" >About</a></li>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="about.html">About</a></li>
       <li><a href="programs.html" class="active">Programs</a></li>
-      <li><a href="app.html" >The App</a></li>
-      <li><a href="testimonials.html" >Testimonials</a></li>
-      <li><a href="blog.html" >Blog</a></li>
-      <li><a href="contact.html" >Contact</a></li>
+      <li><a href="app.html">The App</a></li>
+      <li><a href="testimonials.html">Testimonials</a></li>
+      <li><a href="blog.html">Blog</a></li>
+      <li><a href="contact.html">Contact</a></li>
       <li><a href="contact.html" class="nav-cta">Book Free Consultation</a></li>
     </ul>
   </div>
@@ -35,95 +78,141 @@
 <div class="page-hero">
   <span class="eyebrow">Individual Programs</span>
   <h1>Choose your path<br>to <em>wellness</em></h1>
-  <p>All programs are delivered virtually — work with Caroline from anywhere in the country. Free initial consultation included.</p>
-  <div class="page-wave"><svg viewBox="0 0 1440 56" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><path d="M0,28 C360,56 1080,0 1440,28 L1440,56 L0,56 Z" fill="#FAF7FC"/></svg></div>
+  <p>All programs are delivered virtually — work with Caroline from anywhere in the country. Every program includes access to the Serenity wellness app.</p>
+  <div class="page-wave">
+    <svg viewBox="0 0 1440 56" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M0,28 C360,56 1080,0 1440,28 L1440,56 L0,56 Z" fill="#FAF7FC"/>
+    </svg>
+  </div>
 </div>
 
 <section class="section">
   <div class="container">
-    <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:20px;padding:20px 28px;background:var(--lavender-bg);border-radius:14px;border:1px solid var(--border);">
-      <span style="font-size:14px;color:var(--text-mid);">💻 <strong style="color:var(--text-dark);">100% virtual coaching</strong> — all sessions conducted online via video call</span>
-      <span style="color:var(--border);">|</span>
-      <span style="font-size:14px;color:var(--text-mid);">🗓️ <strong style="color:var(--text-dark);">Free initial consultation</strong> — no commitment required</span>
-      <span style="color:var(--border);">|</span>
-      <span style="font-size:14px;color:var(--text-mid);">🇺🇸 <strong style="color:var(--text-dark);">Available nationwide</strong></span>
+
+    <div class="virtual-bar">
+      <div class="virtual-bar-item">💻 <strong>100% Virtual Coaching</strong> — all sessions via video call</div>
+      <div class="vbar-sep"></div>
+      <div class="virtual-bar-item">🗓️ <strong>Free Initial Consultation</strong> — no commitment</div>
+      <div class="vbar-sep"></div>
+      <div class="virtual-bar-item">🇺🇸 <strong>Available Nationwide</strong></div>
+      <div class="vbar-sep"></div>
+      <div class="virtual-bar-item">📱 <strong>Serenity App Included</strong></div>
     </div>
 
-    <div class="programs-grid">
-      <div class="program-card">
-        <div class="program-tier silver">Silver Package</div>
-        <div class="program-price">$600</div>
-        <div class="program-name">Six Week Feel Good Fast</div>
-        <p class="program-desc">For those ready to feel good fast and up for a real challenge. Six focused weeks of guided transformation.</p>
-        <ul class="program-includes">
-          <li>7 virtual weekly sessions including initial consult</li>
-          <li>Elimination guide and recipes</li>
-          <li>Access to the Serenity wellness app</li>
-          <li>Food and self-care samples</li>
-          <li>1 book chosen just for you</li>
-        </ul>
-        <a href="contact.html" class="btn btn-outline btn-full">Get started</a>
+    <div class="program-tiles">
+
+      <div class="program-tile silver">
+        <div class="tile-header silver">
+          <div class="tile-tier silver">Silver Package</div>
+          <div class="tile-price"><sup>$</sup>600</div>
+          <div class="tile-name">Six Week Feel Good Fast</div>
+          <div class="tile-tagline">Six focused weeks of guided transformation</div>
+        </div>
+        <div class="tile-body">
+          <div class="tile-suggested">
+            <div class="tile-suggested-label">Suggested for</div>
+            <p>Those who are ready to feel good fast and are up for a real challenge.</p>
+          </div>
+          <div class="tile-includes-label">What's included</div>
+          <ul class="tile-includes silver">
+            <li><span class="tile-check">✓</span>7 virtual weekly sessions including initial consult</li>
+            <li><span class="tile-check">✓</span>Elimination guide and recipes</li>
+            <li><span class="tile-check">✓</span>Access to the Serenity wellness app</li>
+            <li><span class="tile-check">✓</span>Food and self-care samples</li>
+            <li><span class="tile-check">✓</span>1 book chosen just for you</li>
+          </ul>
+          <a href="contact.html" class="btn btn-outline btn-full">Get started</a>
+        </div>
       </div>
-      <div class="program-card featured">
-        <div class="program-badge">Most Popular</div>
-        <div class="program-tier gold">Gold Package</div>
-        <div class="program-price">$1,500</div>
-        <div class="program-name">Three Month Healthy Start</div>
-        <p class="program-desc">For those who want to truly understand how food affects how they feel — and build a foundation for lifelong wellness.</p>
-        <ul class="program-includes">
-          <li>13 virtual weekly sessions including initial consult</li>
-          <li>Access to the Serenity wellness app</li>
-          <li>Food and self-care samples</li>
-          <li>2 books chosen just for you</li>
-          <li>Gift certificates for holistic services</li>
-        </ul>
-        <a href="contact.html" class="btn btn-primary btn-full">Get started</a>
+
+      <div class="program-tile gold featured">
+        <div class="tile-badge">Most Popular</div>
+        <div class="tile-header gold">
+          <div class="tile-tier gold">Gold Package</div>
+          <div class="tile-price"><sup>$</sup>1,500</div>
+          <div class="tile-name">Three Month Healthy Start</div>
+          <div class="tile-tagline">Build a lasting foundation for lifelong wellness</div>
+        </div>
+        <div class="tile-body">
+          <div class="tile-suggested">
+            <div class="tile-suggested-label">Suggested for</div>
+            <p>Those who want to truly understand how food affects how they feel.</p>
+          </div>
+          <div class="tile-includes-label">What's included</div>
+          <ul class="tile-includes gold">
+            <li><span class="tile-check">✓</span>13 virtual weekly sessions including initial consult</li>
+            <li><span class="tile-check">✓</span>Access to the Serenity wellness app</li>
+            <li><span class="tile-check">✓</span>Food and self-care samples</li>
+            <li><span class="tile-check">✓</span>2 books chosen just for you</li>
+            <li><span class="tile-check">✓</span>Gift certificates for holistic services</li>
+          </ul>
+          <a href="contact.html" class="btn btn-primary btn-full">Get started</a>
+        </div>
       </div>
-      <div class="program-card">
-        <div class="program-tier platinum">Platinum Package</div>
-        <div class="program-price">$2,600</div>
-        <div class="program-name">Six Month New You</div>
-        <p class="program-desc">For those ready to fully embrace a new lifestyle and feel truly amazing — a complete, lasting transformation.</p>
-        <ul class="program-includes">
-          <li>27 virtual weekly sessions including initial consult</li>
-          <li>Access to the Serenity wellness app</li>
-          <li>Food and self-care samples</li>
-          <li>2 books chosen just for you</li>
-          <li>Gift certificates for holistic services</li>
-        </ul>
-        <a href="contact.html" class="btn btn-outline btn-full">Get started</a>
+
+      <div class="program-tile platinum">
+        <div class="tile-header platinum">
+          <div class="tile-tier platinum">Platinum Package</div>
+          <div class="tile-price"><sup>$</sup>2,600</div>
+          <div class="tile-name">Six Month New You</div>
+          <div class="tile-tagline">A complete, lasting lifestyle transformation</div>
+        </div>
+        <div class="tile-body">
+          <div class="tile-suggested">
+            <div class="tile-suggested-label">Suggested for</div>
+            <p>Those ready to fully embrace a new lifestyle and feel truly amazing.</p>
+          </div>
+          <div class="tile-includes-label">What's included</div>
+          <ul class="tile-includes platinum">
+            <li><span class="tile-check">✓</span>27 virtual weekly sessions including initial consult</li>
+            <li><span class="tile-check">✓</span>Access to the Serenity wellness app</li>
+            <li><span class="tile-check">✓</span>Food and self-care samples</li>
+            <li><span class="tile-check">✓</span>2 books chosen just for you</li>
+            <li><span class="tile-check">✓</span>Gift certificates for holistic services</li>
+          </ul>
+          <a href="contact.html" class="btn btn-outline btn-full">Get started</a>
+        </div>
       </div>
+
     </div>
-    <p class="programs-note">Not sure which program fits your life? <a href="contact.html">Book a free consultation</a> — no commitment, just a conversation.</p>
+
+    <p style="text-align:center;margin-top:28px;font-size:14px;color:var(--text-mid);">Not sure which program is right for you? <a href="contact.html" style="font-weight:500;color:var(--purple-m);border-bottom:1px solid currentColor;">Book a free consultation</a> — no commitment, just a conversation.</p>
+
+    <div class="disclaimer-banner">
+      <span class="disclaimer-icon">ℹ️</span>
+      <p class="disclaimer-text"><strong>Please note:</strong> Serenity of Body and Mind provides nutrition and holistic wellness coaching only. This is not a medical practice and Caroline Devin is not a licensed physician. Coaching is not intended to diagnose, treat, cure, or prevent any disease, and is not a substitute for professional medical advice. Always consult your physician before making significant changes to your diet or lifestyle, particularly if you have an existing health condition. <a href="disclaimer.html" style="color:var(--purple-m);font-weight:500;">Read our full disclaimer →</a></p>
+    </div>
+
   </div>
 </section>
 
 <section class="section bg-soft">
-  <div class="container container-sm text-center">
-    <span class="eyebrow">Additional Services</span>
-    <h2 class="section-title">More ways to work <em>together</em></h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:40px;text-align:left;">
+  <div class="container">
+    <span class="eyebrow text-center" style="display:block;">Additional Services</span>
+    <h2 class="section-title text-center">More ways to work <em>together</em></h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:40px;">
       <div style="background:var(--white);border-radius:var(--radius);padding:28px;border:1px solid var(--border);box-shadow:var(--shadow);">
-        <div style="font-size:28px;margin-bottom:14px;">👥</div>
+        <div style="font-size:30px;margin-bottom:14px;">👥</div>
         <h3 style="font-size:18px;margin-bottom:8px;color:var(--purple-d);">Group Coaching</h3>
-        <p style="font-size:13px;color:var(--text-mid);line-height:1.7;">Share the journey with others. Virtual group sessions combining community support with expert coaching.</p>
+        <p style="font-size:13px;color:var(--text-mid);line-height:1.7;">Virtual group sessions combining community support with expert coaching guidance.</p>
       </div>
       <div style="background:var(--white);border-radius:var(--radius);padding:28px;border:1px solid var(--border);box-shadow:var(--shadow);">
-        <div style="font-size:28px;margin-bottom:14px;">🥘</div>
+        <div style="font-size:30px;margin-bottom:14px;">🥘</div>
         <h3 style="font-size:18px;margin-bottom:8px;color:var(--purple-d);">Kitchen &amp; Pantry Clean-Outs</h3>
-        <p style="font-size:13px;color:var(--text-mid);line-height:1.7;">Transform your kitchen into a space that supports your goals. Available virtually or in-person locally.</p>
+        <p style="font-size:13px;color:var(--text-mid);line-height:1.7;">Transform your kitchen into a space that supports your health goals. Available virtually or locally in Portland.</p>
       </div>
       <div style="background:var(--white);border-radius:var(--radius);padding:28px;border:1px solid var(--border);box-shadow:var(--shadow);">
-        <div style="font-size:28px;margin-bottom:14px;">✨</div>
+        <div style="font-size:30px;margin-bottom:14px;">✨</div>
         <h3 style="font-size:18px;margin-bottom:8px;color:var(--purple-d);">And More...</h3>
-        <p style="font-size:13px;color:var(--text-mid);line-height:1.7;">Have something specific in mind? Reach out and let's talk about how I can support your wellness goals.</p>
+        <p style="font-size:13px;color:var(--text-mid);line-height:1.7;">Have something specific in mind? Reach out and let's talk about how I can support your goals.</p>
       </div>
     </div>
-    <div style="margin-top:36px;">
+    <div style="text-align:center;margin-top:32px;">
       <a href="contact.html" class="btn btn-outline">Inquire about additional services</a>
     </div>
   </div>
 </section>
+
 <footer class="footer">
   <div class="container">
     <div class="footer-inner">
@@ -141,24 +230,28 @@
         <a href="testimonials.html">Testimonials</a>
         <a href="blog.html">Blog</a>
         <a href="contact.html">Contact</a>
+        <a href="disclaimer.html">Disclaimer</a>
       </div>
       <div class="footer-contact">
         <a href="tel:+15033547298">(503) 354-7298</a>
         <a href="mailto:caroline@serenityofbodyandmind.com">caroline@serenityofbodyandmind.com</a>
       </div>
     </div>
-    <div class="footer-bottom"><p>© 2025 Serenity of Body and Mind, LLC · All rights reserved · Virtual coaching available nationwide</p></div>
+    <div class="footer-bottom">
+      <p>© 2025 Serenity of Body and Mind, LLC · All rights reserved · Virtual coaching available nationwide<br>
+      <span style="opacity:.7;">Coaching services are not a substitute for professional medical advice. <a href="disclaimer.html" style="color:rgba(255,255,255,.4);">Full disclaimer</a></span></p>
+    </div>
   </div>
-</footer><script>
+</footer>
+
+<script>
 const nav=document.getElementById('nav');
 if(nav){window.addEventListener('scroll',()=>nav.classList.toggle('scrolled',window.scrollY>40));}
 const toggle=document.getElementById('navToggle');
 const links=document.getElementById('navLinks');
-if(toggle&&links){
-  toggle.addEventListener('click',()=>links.classList.toggle('open'));
-  links.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>links.classList.remove('open')));
-}
+if(toggle&&links){toggle.addEventListener('click',()=>links.classList.toggle('open'));links.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>links.classList.remove('open')));}
 const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)';}});},{threshold:0.08});
-document.querySelectorAll('.service-card,.program-card,.t-card,.blog-card,.fade-in').forEach(el=>{el.style.opacity='0';el.style.transform='translateY(18px)';el.style.transition='opacity .65s ease,transform .65s ease';obs.observe(el);});
+document.querySelectorAll('.program-tile').forEach(el=>{el.style.opacity='0';el.style.transform='translateY(20px)';el.style.transition='opacity .65s ease,transform .65s ease';obs.observe(el);});
 </script>
-</body></html>
+</body>
+</html>
