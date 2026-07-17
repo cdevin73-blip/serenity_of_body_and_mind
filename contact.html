@@ -91,39 +91,61 @@
         <h3 style="font-size:26px;margin-bottom:6px;">Send a message</h3>
         <p style="font-size:13px;color:var(--text-mid);margin-bottom:28px;">Caroline personally responds to every message within one business day.</p>
 
-        <div class="form-group">
-          <label class="form-label">Your full name</label>
-          <input type="text" class="form-control" placeholder="First and last name">
+        <!-- Success message (hidden until form submitted) -->
+        <div id="form-success" style="display:none;background:rgba(107,174,117,.12);border:1px solid rgba(107,174,117,.35);border-radius:14px;padding:24px;text-align:center;margin-bottom:20px;">
+          <div style="font-size:32px;margin-bottom:10px;">🌿</div>
+          <p style="font-size:16px;font-weight:500;color:#3B6D11;margin-bottom:6px;">Message sent!</p>
+          <p style="font-size:13px;color:#5A8A5A;">Thank you for reaching out. Caroline will be in touch within one business day.</p>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+        <!-- Error message (hidden until error occurs) -->
+        <div id="form-error" style="display:none;background:rgba(232,90,74,.08);border:1px solid rgba(232,90,74,.25);border-radius:14px;padding:16px;margin-bottom:20px;">
+          <p style="font-size:13px;color:#A32D2D;">Something went wrong. Please try again or email caroline@serenityofbodyandmind.com directly.</p>
+        </div>
+
+        <form id="contact-form" action="https://formspree.io/f/xnjeplqa" method="POST">
+
+          <!-- Honeypot spam filter - hidden from real users -->
+          <input type="text" name="_gotcha" style="display:none">
+
+          <!-- Redirect back to contact page after submission (for no-JS fallback) -->
+          <input type="hidden" name="_next" value="https://serenityofbodyandmind.com/contact.html?success=true">
+
           <div class="form-group">
-            <label class="form-label">Email address</label>
-            <input type="email" class="form-control" placeholder="your@email.com">
+            <label class="form-label" for="name">Your full name</label>
+            <input type="text" id="name" name="name" class="form-control" placeholder="First and last name" required>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="form-group">
+              <label class="form-label" for="email">Email address</label>
+              <input type="email" id="email" name="email" class="form-control" placeholder="your@email.com" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="phone">Phone (optional)</label>
+              <input type="tel" id="phone" name="phone" class="form-control" placeholder="(503) 000-0000">
+            </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Phone (optional)</label>
-            <input type="tel" class="form-control" placeholder="(503) 000-0000">
+            <label class="form-label" for="interest">I am interested in</label>
+            <select id="interest" name="interest" class="form-control">
+              <option value="">Select a program or service...</option>
+              <option>Free initial consultation</option>
+              <option>Silver Package — 6 Week Program ($600)</option>
+              <option>Gold Package — 3 Month Program ($1,500)</option>
+              <option>Platinum Package — 6 Month Program ($2,600)</option>
+              <option>Group Coaching</option>
+              <option>Kitchen / Pantry Clean-Out</option>
+              <option>General question</option>
+            </select>
           </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">I am interested in</label>
-          <select class="form-control">
-            <option value="">Select a program or service...</option>
-            <option>Free initial consultation</option>
-            <option>Silver Package — 6 Week Program ($600)</option>
-            <option>Gold Package — 3 Month Program ($1,500)</option>
-            <option>Platinum Package — 6 Month Program ($2,600)</option>
-            <option>Group Coaching</option>
-            <option>Kitchen / Pantry Clean-Out</option>
-            <option>General question</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Tell me about your goals</label>
-          <textarea class="form-control" placeholder="What are you hoping to achieve? What have you tried before? Anything I should know?"></textarea>
-        </div>
-        <button class="btn btn-primary btn-full" onclick="alert('Thank you for reaching out! To connect this form to your inbox, set up a free account at Formspree.io and paste your form ID here.')">Send Message</button>
-        <p style="font-size:11px;color:var(--text-light);text-align:center;margin-top:12px;">Responses within 1 business day · Mon–Fri, 8am–6pm PST</p>
+          <div class="form-group">
+            <label class="form-label" for="message">Tell me about your goals</label>
+            <textarea id="message" name="message" class="form-control" placeholder="What are you hoping to achieve? What have you tried before? Anything I should know?" required></textarea>
+          </div>
+
+          <button type="submit" id="submit-btn" class="btn btn-primary btn-full">Send Message</button>
+          <p style="font-size:11px;color:var(--text-light);text-align:center;margin-top:12px;">Responses within 1 business day · Mon–Fri, 8am–6pm PST</p>
+        </form>
       </div>
     </div>
   </div>
@@ -166,6 +188,45 @@
     <div class="footer-bottom"><p>© 2025 Serenity of Body and Mind, LLC · All rights reserved · Virtual coaching available nationwide</p></div>
   </div>
 </footer><script>
+// ── Formspree AJAX submission ──────────────────────────────────────────
+const contactForm = document.getElementById('contact-form');
+if (contactForm) {
+  contactForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const success = document.getElementById('form-success');
+    const error = document.getElementById('form-error');
+    btn.textContent = 'Sending…';
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    error.style.display = 'none';
+    try {
+      const response = await fetch('https://formspree.io/f/xnjeplqa', {
+        method: 'POST',
+        body: new FormData(contactForm),
+        headers: { 'Accept': 'application/json' }
+      });
+      if (response.ok) {
+        contactForm.style.display = 'none';
+        success.style.display = 'block';
+        success.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        throw new Error('Submission failed');
+      }
+    } catch(err) {
+      error.style.display = 'block';
+      btn.textContent = 'Send Message';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+  });
+  if (window.location.search.includes('success=true')) {
+    contactForm.style.display = 'none';
+    document.getElementById('form-success').style.display = 'block';
+  }
+}
+
+// ── Nav scroll ─────────────────────────────────────────────────────────
 const nav=document.getElementById('nav');
 if(nav){window.addEventListener('scroll',()=>nav.classList.toggle('scrolled',window.scrollY>40));}
 const toggle=document.getElementById('navToggle');
