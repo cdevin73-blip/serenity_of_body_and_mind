@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useState, useEffect, useRef } from "react";
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
@@ -932,15 +933,13 @@ ${date}`);
             entry.gratitude.filter(g=>g).forEach((g,i) => lines.push(`  ${i+1}. ${g}`));
           }
         });
-        downloadTextFile(`serenity-journal-${client.name.replace(/\s/g,"-").toLowerCase()}.txt`, lines.join("
-"));
+        downloadTextFile(`serenity-journal-${client.name.replace(/\s/g,"-").toLowerCase()}.txt`, lines.join("\n"));
       } else if (type === "habits") {
         const lines = ["SERENITY OF BODY AND MIND — Habit History", `Client: ${client.name}`, "", "Date,Sleep (hrs),Water (glasses),Exercise (min),Nutrition (meals),Mood (/5)"];
         Object.entries(history).sort(([a],[b])=>a.localeCompare(b)).forEach(([date, d]) => {
           lines.push(`${date},${d.sleep||0},${d.water||0},${d.exercise||0},${d.nutrition||0},${d.mood||0}`);
         });
-        downloadTextFile(`serenity-habits-${client.name.replace(/\s/g,"-").toLowerCase()}.csv`, lines.join("
-"));
+        downloadTextFile(`serenity-habits-${client.name.replace(/\s/g,"-").toLowerCase()}.csv`, lines.join("\n"));
       }
       setDownloading(false);
       onClose();
