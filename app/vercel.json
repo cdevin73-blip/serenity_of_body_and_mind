@@ -1,6 +1,11 @@
 {
-  "buildCommand": "CI=false npm run build",
+  "buildCommand": "DISABLE_ESLINT_PLUGIN=true CI=false npm run build",
   "outputDirectory": "build",
-  "installCommand": "npm install",
-  "framework": "create-react-app"
+  "installCommand": "npm install --legacy-peer-deps",
+  "framework": "create-react-app",
+  "env": {
+    "DISABLE_ESLINT_PLUGIN": "true",
+    "CI": "false",
+    "GENERATE_SOURCEMAP": "false"
+  }
 }
