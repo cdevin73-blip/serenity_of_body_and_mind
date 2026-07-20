@@ -33,10 +33,10 @@ const SUBSCRIPTION_PLANS = [
     id: "app_only",
     name: "App Only",
     price: "$12/mo",
-    description: "Full habit tracking, daily journal, food diary, gratitude, AI insights — everything except messaging.",
+    description: "Full habit tracking, daily journal, food diary, gratitude, AI insights - everything except messaging.",
     features: ["Daily habit tracking", "Full journal & food diary", "AI coaching insights", "Progress history & streaks", "Smart reminders"],
     excludes: ["Messaging with Caroline"],
-    cta: "Subscribe — App Only",
+    cta: "Subscribe - App Only",
     highlight: false,
   },
   {
@@ -44,9 +44,9 @@ const SUBSCRIPTION_PLANS = [
     name: "App + Messaging",
     price: "$25/mo",
     description: "Everything in App Only, plus up to 5 messages per week to Caroline during business hours.",
-    features: ["Everything in App Only", "Up to 5 messages per week", "Mon–Fri, 8am–6pm PST", "Responses within 24 hours"],
+    features: ["Everything in App Only", "Up to 5 messages per week", "Mon-Fri, 8am-6pm PST", "Responses within 24 hours"],
     excludes: [],
-    cta: "Subscribe — App + Messaging",
+    cta: "Subscribe - App + Messaging",
     highlight: true,
   },
 ];
@@ -835,8 +835,8 @@ function generateClientReport(client, history, journalData) {
   lines.push("Wellness Journey Report");
   lines.push("Generated: " + today.toLocaleDateString());
   lines.push("Client: " + client.name);
-  lines.push("Program: " + (client.program || "—"));
-  lines.push("Goal: " + (client.goal || "—"));
+  lines.push("Program: " + (client.program || "-"));
+  lines.push("Goal: " + (client.goal || "-"));
   lines.push("\n" + "=".repeat(50));
   lines.push("\n30-DAY HABIT SUMMARY\n");
 
@@ -895,7 +895,7 @@ function generateClientReport(client, history, journalData) {
 
   lines.push("\n" + "=".repeat(50));
   lines.push("\nThank you for your wellness journey with Serenity of Body and Mind.");
-  lines.push("serenityofbodyandmind.com · (503) 354-7298");
+  lines.push("serenityofbodyandmind.com . (503) 354-7298");
 
   return lines.join("\n");
 }
@@ -921,11 +921,10 @@ function DownloadModal({ client, history, journalData, onClose }) {
         downloadTextFile(`serenity-wellness-report-${client.name.replace(/\s/g,"-").toLowerCase()}.txt`, report);
       } else if (type === "journal") {
         const entries = Object.entries(journalData).sort(([a],[b])=>b.localeCompare(a));
-        const lines = ["SERENITY OF BODY AND MIND — Journal Export", `Client: ${client.name}`, ""];
+        const lines = ["SERENITY OF BODY AND MIND - Journal Export", `Client: ${client.name}`, ""];
         entries.forEach(([date, entry]) => {
-          lines.push(`
-${date}`);
-          lines.push("─".repeat(30));
+          lines.push(`\n${date}`);
+          lines.push("-".repeat(30));
           if (entry.intention) lines.push(`Intention: ${entry.intention}`);
           if (entry.reflection) lines.push(`Reflection: ${entry.reflection}`);
           if (entry.gratitude?.some(g=>g)) {
@@ -935,7 +934,7 @@ ${date}`);
         });
         downloadTextFile(`serenity-journal-${client.name.replace(/\s/g,"-").toLowerCase()}.txt`, lines.join("\n"));
       } else if (type === "habits") {
-        const lines = ["SERENITY OF BODY AND MIND — Habit History", `Client: ${client.name}`, "", "Date,Sleep (hrs),Water (glasses),Exercise (min),Nutrition (meals),Mood (/5)"];
+        const lines = ["SERENITY OF BODY AND MIND - Habit History", `Client: ${client.name}`, "", "Date,Sleep (hrs),Water (glasses),Exercise (min),Nutrition (meals),Mood (/5)"];
         Object.entries(history).sort(([a],[b])=>a.localeCompare(b)).forEach(([date, d]) => {
           lines.push(`${date},${d.sleep||0},${d.water||0},${d.exercise||0},${d.nutrition||0},${d.mood||0}`);
         });
