@@ -2180,23 +2180,52 @@ export default function App() {
 
   async function loadProfile(user) {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
+
+    // Retry up to 3 times - profile creation trigger may have a slight delay
+    let data = null;
+    let error = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const result = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+      data = result.data;
+      error = result.error;
+      if (data) break;
+      // Wait 1 second before retrying
+      await new Promise(r => setTimeout(r, 1000));
+    }
 
     if (error || !data) {
-      // Profile not found - trigger onboarding
-      setView("onboarding");
-      setLoading(false);
-      return;
+      // Profile still not found after retries - create it manually
+      const { data: newProfile } = await supabase
+        .from("profiles")
+        .insert({
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || "",
+          role: user.user_metadata?.role || "client",
+        })
+        .select()
+        .single();
+
+      if (newProfile) {
+        data = newProfile;
+      } else {
+        setView("onboarding");
+        setLoading(false);
+        return;
+      }
     }
 
     setProfile(data);
 
     if (data.role === "coach") {
       setView("coach");
+    } else if (!data.full_name) {
+      // Has profile but no name - needs onboarding
+      setView("onboarding");
     } else {
       setView("client");
     }
@@ -2255,7 +2284,16 @@ export default function App() {
       <style>{CSS}</style>
       <div className="app">
         {view === "auth" && <AuthScreen onAuth={(user) => loadProfile(user)} />}
-        {view === "onboarding" && <Onboarding onComplete={handleOnboardingComplete} />}
+        {view === "onboarding" && (
+          <div>
+            <div style={{position:"fixed",top:16,right:16,zIndex:999}}>
+              <button onClick={handleLogout} style={{background:"rgba(0,0,0,.08)",border:"none",borderRadius:20,padding:"8px 16px",fontSize:12,cursor:"pointer",color:"#666"}}>
+                Sign out
+              </button>
+            </div>
+            <Onboarding onComplete={handleOnboardingComplete} />
+          </div>
+        )}
         {view === "client" && profile && (
           <ClientApp
             clientId={profile.id}
