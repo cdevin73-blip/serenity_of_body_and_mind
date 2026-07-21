@@ -1,5 +1,11 @@
 /* eslint-disable */
 import { useState, useEffect, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// ─── SUPABASE CLIENT ─────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://cnboxzblouzraysfmwmh.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuYm94emJsb3V6cmF5c2Ztd21oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NzQ2MjQsImV4cCI6MjEwMDE1MDYyNH0.eaV8ATZyJi-szRfd1PYGehLcPwBT8VljArVGVy7v4d8";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 
@@ -2016,81 +2022,256 @@ function CoachApp({onLogout}) {
 
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
 
-export default function App() {
-  const [view, setView] = useState("login"); // login | onboarding | client | coach
-  const [role, setRole] = useState(null);
-  const [clientId, setClientId] = useState("");
-  const [isNewClient, setIsNewClient] = useState(false);
+// ─── AUTH LOGIN SCREEN ───────────────────────────────────────────────────────
 
-  function handleLogin() {
-    if(role==="coach") { setView("coach"); return; }
-    if(role==="client") {
-      if(isNewClient) { setView("onboarding"); return; }
-      if(clientId) { setView("client"); return; }
+function AuthScreen({ onAuth }) {
+  const [mode, setMode] = useState("login"); // login | signup | reset
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setLoading(true); setError("");
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { setError(error.message); setLoading(false); return; }
+    onAuth(data.user);
+  }
+
+  async function handleSignup(e) {
+    e.preventDefault();
+    setLoading(true); setError("");
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: { data: { full_name: name, role: "client" } }
+    });
+    if (error) { setError(error.message); setLoading(false); return; }
+    setMessage("Check your email to confirm your account, then sign in.");
+    setMode("login"); setLoading(false);
+  }
+
+  async function handleReset(e) {
+    e.preventDefault();
+    setLoading(true); setError("");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "https://app.serenityofbodyandmind.com"
+    });
+    if (error) { setError(error.message); } else {
+      setMessage("Password reset email sent - check your inbox.");
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div className="login-wrap">
+      <div className="login-card">
+        <div className="login-logo">Serenity</div>
+        <div className="login-tagline">of Body and Mind</div>
+
+        {message && (
+          <div style={{background:"rgba(61,125,107,.1)",border:"1px solid rgba(61,125,107,.3)",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:13,color:"var(--sage)",lineHeight:1.5}}>
+            {message}
+          </div>
+        )}
+        {error && (
+          <div style={{background:"rgba(220,80,60,.08)",border:"1px solid rgba(220,80,60,.25)",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:13,color:"#C03020",lineHeight:1.5}}>
+            {error}
+          </div>
+        )}
+
+        {mode === "login" && (
+          <>
+            <div className="section-label" style={{marginBottom:12}}>Sign in to your account</div>
+            <input className="select-field" type="email" placeholder="Email address" value={email}
+              onChange={e=>setEmail(e.target.value)} style={{marginBottom:10}}/>
+            <input className="select-field" type="password" placeholder="Password" value={password}
+              onChange={e=>setPassword(e.target.value)} style={{marginBottom:16}}/>
+            <button className="btn-primary" disabled={loading||!email||!password} onClick={handleLogin}>
+              {loading ? "Signing in..." : "Sign In"}
+            </button>
+            <div style={{textAlign:"center",marginTop:16,display:"flex",flexDirection:"column",gap:8}}>
+              <button onClick={()=>{setMode("signup");setError("");setMessage("");}}
+                style={{background:"none",border:"none",color:"var(--terra)",fontSize:13,cursor:"pointer",fontFamily:"var(--font)"}}>
+                New client? Create account
+              </button>
+              <button onClick={()=>{setMode("reset");setError("");setMessage("");}}
+                style={{background:"none",border:"none",color:"var(--light)",fontSize:12,cursor:"pointer",fontFamily:"var(--font)"}}>
+                Forgot password?
+              </button>
+            </div>
+          </>
+        )}
+
+        {mode === "signup" && (
+          <>
+            <div className="section-label" style={{marginBottom:12}}>Create your account</div>
+            <input className="select-field" type="text" placeholder="Your full name" value={name}
+              onChange={e=>setName(e.target.value)} style={{marginBottom:10}}/>
+            <input className="select-field" type="email" placeholder="Email address" value={email}
+              onChange={e=>setEmail(e.target.value)} style={{marginBottom:10}}/>
+            <input className="select-field" type="password" placeholder="Choose a password (min 8 chars)" value={password}
+              onChange={e=>setPassword(e.target.value)} style={{marginBottom:16}}/>
+            <button className="btn-primary" disabled={loading||!email||!password||!name} onClick={handleSignup}>
+              {loading ? "Creating account..." : "Create Account"}
+            </button>
+            <div style={{textAlign:"center",marginTop:16}}>
+              <button onClick={()=>{setMode("login");setError("");setMessage("");}}
+                style={{background:"none",border:"none",color:"var(--light)",fontSize:13,cursor:"pointer",fontFamily:"var(--font)"}}>
+                Already have an account? Sign in
+              </button>
+            </div>
+          </>
+        )}
+
+        {mode === "reset" && (
+          <>
+            <div className="section-label" style={{marginBottom:12}}>Reset your password</div>
+            <input className="select-field" type="email" placeholder="Email address" value={email}
+              onChange={e=>setEmail(e.target.value)} style={{marginBottom:16}}/>
+            <button className="btn-primary" disabled={loading||!email} onClick={handleReset}>
+              {loading ? "Sending..." : "Send Reset Email"}
+            </button>
+            <div style={{textAlign:"center",marginTop:16}}>
+              <button onClick={()=>{setMode("login");setError("");setMessage("");}}
+                style={{background:"none",border:"none",color:"var(--light)",fontSize:13,cursor:"pointer",fontFamily:"var(--font)"}}>
+                Back to sign in
+              </button>
+            </div>
+          </>
+        )}
+
+        <p style={{fontSize:11,color:"var(--light)",textAlign:"center",marginTop:20,lineHeight:1.6}}>
+          Serenity of Body and Mind, LLC<br/>
+          <a href="https://serenityofbodyandmind.com" target="_blank" style={{color:"var(--light)"}}>serenityofbodyandmind.com</a>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN APP WITH SUPABASE AUTH ─────────────────────────────────────────────
+
+export default function App() {
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState("loading"); // loading | auth | onboarding | client | coach
+
+  useEffect(() => {
+    // Check for existing session on load
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) loadProfile(session.user);
+      else { setView("auth"); setLoading(false); }
+    });
+
+    // Listen for auth changes (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) loadProfile(session.user);
+      else { setProfile(null); setView("auth"); }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function loadProfile(user) {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (error || !data) {
+      // Profile not found - trigger onboarding
+      setView("onboarding");
+      setLoading(false);
+      return;
+    }
+
+    setProfile(data);
+
+    if (data.role === "coach") {
+      setView("coach");
+    } else {
+      setView("client");
+    }
+    setLoading(false);
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setSession(null);
+    setProfile(null);
+    setView("auth");
+  }
+
+  async function handleOnboardingComplete(form) {
+    // Save onboarding data to profile
+    if (session?.user) {
+      await supabase.from("profiles").update({
+        full_name: form.name,
+        goal: form.goal,
+      }).eq("id", session.user.id);
+
+      await supabase.from("goals").upsert({
+        user_id: session.user.id,
+        primary_goal: form.goal,
+        why: form.why,
+        obstacles: form.obstacles,
+        commitment: form.commitment,
+      });
+
+      loadProfile(session.user);
     }
   }
 
-  function handleOnboardingComplete(form) {
-    // In a real app this would create an account
-    setView("client");
-    setClientId("c1"); // demo: assign first client slot
+  if (loading || view === "loading") {
+    return (
+      <>
+        <style>{CSS}</style>
+        <div className="login-wrap">
+          <div className="login-card" style={{textAlign:"center"}}>
+            <div className="login-logo">Serenity</div>
+            <div className="login-tagline">of Body and Mind</div>
+            <div style={{marginTop:24,color:"var(--light)",fontSize:14}}>Loading your wellness journey...</div>
+            <div style={{marginTop:16,display:"flex",justifyContent:"center",gap:6}}>
+              {[0,1,2].map(i=>(
+                <div key={i} style={{width:8,height:8,borderRadius:"50%",background:"var(--terra)",opacity:0.4,animation:`pulse 1s ${i*0.2}s infinite`}}/>
+              ))}
+            </div>
+          </div>
+        </div>
+      </>
+    );
   }
 
   return (
     <>
       <style>{CSS}</style>
       <div className="app">
-        {view==="login" && (
-          <div className="login-wrap">
-            <div className="login-card">
-              <div className="login-logo">Serenity</div>
-              <div className="login-tagline">of Body and Mind</div>
-              <div className="section-label">I am a…</div>
-              <div className="role-grid">
-                <button className={`role-btn${role==="client"?" active":""}`} onClick={()=>setRole("client")}>
-                  <span className="rb-icon">🌱</span><div className="rb-name">Client</div><div className="rb-desc">Track my habits</div>
-                </button>
-                <button className={`role-btn${role==="coach"?" active":""}`} onClick={()=>setRole("coach")}>
-                  <span className="rb-icon">🌿</span><div className="rb-name">Coach</div><div className="rb-desc">Manage clients</div>
-                </button>
-              </div>
-
-              {role==="client" && <>
-                <div className="section-label">Account</div>
-                <div className="role-grid" style={{marginBottom:16}}>
-                  <button className={`role-btn${!isNewClient?" active":""}`} onClick={()=>setIsNewClient(false)}>
-                    <span className="rb-icon">👋</span><div className="rb-name">Returning</div>
-                  </button>
-                  <button className={`role-btn${isNewClient?" active":""}`} onClick={()=>setIsNewClient(true)}>
-                    <span className="rb-icon">✨</span><div className="rb-name">New Client</div>
-                  </button>
-                </div>
-                {!isNewClient && (
-                  <select className="select-field" value={clientId} onChange={e=>setClientId(e.target.value)}>
-                    <option value="">Choose your profile…</option>
-                    {CLIENTS.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                )}
-              </>}
-
-              <button className="btn-primary" disabled={!role||(role==="client"&&!isNewClient&&!clientId)} onClick={handleLogin}>
-                {isNewClient&&role==="client"?"Start Onboarding →":"Enter →"}
-              </button>
-            </div>
-          </div>
+        {view === "auth" && <AuthScreen onAuth={(user) => loadProfile(user)} />}
+        {view === "onboarding" && <Onboarding onComplete={handleOnboardingComplete} />}
+        {view === "client" && profile && (
+          <ClientApp
+            clientId={profile.id}
+            supabaseProfile={profile}
+            supabase={supabase}
+            onLogout={handleLogout}
+          />
         )}
-
-        {view==="onboarding" && <Onboarding onComplete={handleOnboardingComplete}/>}
-
-        {view==="client" && (
-          <ClientApp clientId={clientId||"c1"} onLogout={()=>{setView("login");setRole(null);setClientId("");}}/>
-        )}
-
-        {view==="coach" && (
-          <CoachApp onLogout={()=>{setView("login");setRole(null);}}/>
+        {view === "coach" && (
+          <CoachApp
+            supabase={supabase}
+            coachProfile={profile}
+            onLogout={handleLogout}
+          />
         )}
       </div>
     </>
   );
 }
-
