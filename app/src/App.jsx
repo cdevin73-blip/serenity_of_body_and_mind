@@ -57,29 +57,7 @@ const SUBSCRIPTION_PLANS = [
   },
 ];
 
-const CLIENTS = [
-  {
-    id:"c1", name:"Sarah M.",  avatar:"SM", joined:"Jan 2025", goal:"Build energy & reduce stress",
-    email:"sarah@email.com",  phone:"555-0101",
-    program: "Gold", programEndDate: "2026-04-13",
-    accessLevel: "active", graceEndDate: "2026-05-11",
-    subscriptionPlan: null, messagesThisWeek: 2,
-  },
-  {
-    id:"c2", name:"James T.",  avatar:"JT", joined:"Feb 2025", goal:"Lose weight & sleep better",
-    email:"james@email.com",  phone:"555-0102",
-    program: "Silver", programEndDate: "2026-03-20",
-    accessLevel: "grace", graceEndDate: "2026-04-17",
-    subscriptionPlan: null, messagesThisWeek: 0,
-  },
-  {
-    id:"c3", name:"Priya K.",  avatar:"PK", joined:"Mar 2025", goal:"Improve nutrition habits",
-    email:"priya@email.com",  phone:"555-0103",
-    program: "Platinum", programEndDate: "2026-02-23",
-    accessLevel: "app_msg", graceEndDate: "2026-03-23",
-    subscriptionPlan: "app_msg", messagesThisWeek: 3,
-  },
-];
+const CLIENTS = []; // Real clients load from Supabase
 
 function genHistory(clientId) {
   const seed = clientId.charCodeAt(1);
@@ -1544,27 +1522,21 @@ function ClientApp({clientId, onLogout}) {
 
 // ─── COACH APP ───────────────────────────────────────────────────────────────
 
-function CoachApp({onLogout}) {
+function CoachApp({onLogout, supabase, coachProfile}) {
   const [tab, setTab] = useState("clients");
   const [selectedClient, setSelectedClient] = useState(null);
   const [clientTab, setClientTab] = useState("overview");
-  const [allClientData] = useState(()=>Object.fromEntries(CLIENTS.map(c=>[c.id,genHistory(c.id)])));
-  const [coachNotes, setCoachNotes] = useState(()=>Object.fromEntries(CLIENTS.map(c=>[c.id,[]])));
-  const [clientAccessLevels, setClientAccessLevels] = useState(
-    ()=>Object.fromEntries(CLIENTS.map(c=>[c.id, {
-      accessLevel: c.accessLevel,
-      messagesThisWeek: c.messagesThisWeek || 0,
-      programEndDate: c.programEndDate,
-      graceEndDate: c.graceEndDate,
-      subscriptionPlan: c.subscriptionPlan,
-    }]))
-  );
-  const [clientJournals, setClientJournals] = useState(()=>Object.fromEntries(CLIENTS.map(c=>[c.id,{}])));
-  const [clientPrivacy, setClientPrivacy] = useState(()=>({...initPrivacy}));
-  const [messages, setMessages] = useState(initMessages);
+  const [clients, setClients] = useState([]);
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [allClientData] = useState({});
+  const [coachNotes, setCoachNotes] = useState({});
+  const [clientAccessLevels, setClientAccessLevels] = useState({});
+  const [clientJournals, setClientJournals] = useState({});
+  const [clientPrivacy, setClientPrivacy] = useState({});
+  const [messages, setMessages] = useState({});
   const [msgInput, setMsgInput] = useState("");
-  const [goals, setGoals] = useState(initGoals);
-  const [reminders, setReminders] = useState(initReminders);
+  const [goals, setGoals] = useState({});
+  const [reminders, setReminders] = useState({});
   const [editGoals, setEditGoals] = useState(false);
   const [newNote, setNewNote] = useState("");
   const [insights, setInsights] = useState({});
@@ -1573,13 +1545,45 @@ function CoachApp({onLogout}) {
   const [showCoachDownload, setShowCoachDownload] = useState(false);
   const chatRef = useRef(null);
 
+  // Load real clients from Supabase
+  useEffect(() => {
+    async function fetchClients() {
+      setLoadingClients(true);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("role", "client")
+        .order("created_at", { ascending: true });
+      if (!error && data) {
+        setClients(data.map(p => ({
+          id: p.id,
+          name: p.full_name || p.email,
+          avatar: (p.full_name || p.email || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2),
+          joined: p.joined_date ? new Date(p.joined_date).toLocaleDateString("en-US",{month:"short",year:"numeric"}) : "—",
+          goal: p.goal || "No goal set",
+          email: p.email,
+          program: p.program,
+          programEndDate: p.program_end_date,
+          accessLevel: p.access_level || "active",
+          graceEndDate: p.grace_end_date,
+          subscriptionPlan: p.subscription_plan,
+          messagesThisWeek: p.messages_this_week || 0,
+        })));
+      }
+      setLoadingClients(false);
+    }
+    if (supabase) fetchClients();
+  }, [supabase]);
+
   const weekDays = getWeekDays(7);
-  const sc = CLIENTS.find(c=>c.id===selectedClient);
+  const sc = clients.find(c=>c.id===selectedClient);
   const scData = selectedClient ? allClientData[selectedClient] : null;
   const scStreak = scData ? getStreak(scData) : 0;
   const scNotes = selectedClient ? (coachNotes[selectedClient]||[]) : [];
   const scGoals = selectedClient ? goals[selectedClient] : null;
   const scRem = selectedClient ? reminders[selectedClient] : null;
+  // Use live clients list
+  const CLIENTS = clients;
   const scMessages = selectedClient ? (messages[selectedClient]||[]) : [];
 
   function sendMsg() {
@@ -1624,7 +1628,7 @@ function CoachApp({onLogout}) {
   // Reports tab – aggregate
   function getAggregate() {
     const days = reportPeriod==="weekly"?7:30;
-    return CLIENTS.map(c=>{
+    return clients.map(c=>{
       const h=allClientData[c.id]||{};
       const streak=getStreak(h);
       const completions=[];
@@ -1952,7 +1956,20 @@ function CoachApp({onLogout}) {
             <div className="greeting-date">{dayNames[today.getDay()]}, {monthNames[today.getMonth()]} {today.getDate()}</div>
             <div className="greeting-title">Your <em>clients</em> 🌿</div>
           </div>
-          {CLIENTS.map((c,i)=>{
+          {loadingClients && (
+            <div style={{textAlign:"center",padding:"48px 24px",color:"var(--light)"}}>
+              <div style={{fontSize:32,marginBottom:12}}>🌿</div>
+              <div style={{fontSize:14}}>Loading your clients...</div>
+            </div>
+          )}
+          {!loadingClients && clients.length === 0 && (
+            <div style={{textAlign:"center",padding:"48px 24px",background:"var(--warm)",borderRadius:18,border:"1.5px dashed var(--border)"}}>
+              <div style={{fontSize:40,marginBottom:14}}>👋</div>
+              <div style={{fontSize:17,fontWeight:600,color:"var(--dark)",marginBottom:8}}>No clients yet</div>
+              <div style={{fontSize:13,color:"var(--light)",lineHeight:1.6}}>When clients sign up at app.serenityofbodyandmind.com<br/>they will appear here.</div>
+            </div>
+          )}
+          {clients.map((c,i)=>{
             const h=allClientData[c.id]||{};
             const streak=getStreak(h);
             const todayPct=getCompletion(h[todayKey]);
