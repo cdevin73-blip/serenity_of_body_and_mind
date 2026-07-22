@@ -60,6 +60,9 @@ const SUBSCRIPTION_PLANS = [
 const CLIENTS = []; // Real clients load from Supabase
 
 function genHistory(clientId) {
+  // Real Supabase UUIDs are 36 chars - return empty history for real users
+  if (!clientId || clientId.length > 10) return {};
+  // Only generate demo data for short demo IDs like "c1", "c2"
   const seed = clientId.charCodeAt(1);
   const today = new Date();
   const h = {};
@@ -1557,19 +1560,26 @@ function CoachApp({onLogout, supabase, coachProfile}) {
         .select("*")
         .eq("role", "client")
         .order("created_at", { ascending: true });
-      if (!error && data) {
+
+      if (error) {
+        console.error("Error fetching clients:", error);
+        setLoadingClients(false);
+        return;
+      }
+
+      if (data) {
         setClients(data.map(p => ({
           id: p.id,
-          name: p.full_name || p.email,
-          avatar: (p.full_name || p.email || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2),
-          joined: p.joined_date ? new Date(p.joined_date).toLocaleDateString("en-US",{month:"short",year:"numeric"}) : "—",
-          goal: p.goal || "No goal set",
+          name: p.full_name || p.email || "New Client",
+          avatar: (p.full_name || p.email || "C").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2),
+          joined: p.joined_date ? new Date(p.joined_date).toLocaleDateString("en-US",{month:"short",year:"numeric"}) : "Recent",
+          goal: p.goal || "Getting started",
           email: p.email,
-          program: p.program,
-          programEndDate: p.program_end_date,
+          program: p.program || null,
+          programEndDate: p.program_end_date || null,
           accessLevel: p.access_level || "active",
-          graceEndDate: p.grace_end_date,
-          subscriptionPlan: p.subscription_plan,
+          graceEndDate: p.grace_end_date || null,
+          subscriptionPlan: p.subscription_plan || null,
           messagesThisWeek: p.messages_this_week || 0,
         })));
       }
