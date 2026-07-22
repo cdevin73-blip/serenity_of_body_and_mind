@@ -2240,10 +2240,8 @@ export default function App() {
 
     if (data.role === "coach") {
       setView("coach");
-    } else if (!data.full_name) {
-      // Has profile but no name - needs onboarding
-      setView("onboarding");
     } else {
+      // Go straight to client - onboarding only for brand new users
       setView("client");
     }
     setLoading(false);
@@ -2257,23 +2255,44 @@ export default function App() {
   }
 
   async function handleOnboardingComplete(form) {
-    // Save onboarding data to profile
-    if (session?.user) {
-      await supabase.from("profiles").update({
-        full_name: form.name,
-        goal: form.goal,
-      }).eq("id", session.user.id);
+    if (!session?.user) return;
+    setLoading(true);
 
+    // Save profile - use upsert to handle both insert and update
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .upsert({
+        id: session.user.id,
+        email: session.user.email,
+        full_name: form.name || session.user.email,
+        goal: form.goal || "",
+        role: "client",
+      }, { onConflict: "id" });
+
+    if (profileError) {
+      console.error("Profile save error:", profileError);
+    }
+
+    // Save goals
+    if (form.goal) {
       await supabase.from("goals").upsert({
         user_id: session.user.id,
         primary_goal: form.goal,
-        why: form.why,
-        obstacles: form.obstacles,
-        commitment: form.commitment,
-      });
-
-      loadProfile(session.user);
+        why: form.motivation || "",
+      }, { onConflict: "user_id" });
     }
+
+    // Force set view to client even if profile reload has issues
+    setProfile(prev => ({
+      ...prev,
+      id: session.user.id,
+      email: session.user.email,
+      full_name: form.name || session.user.email,
+      goal: form.goal || "",
+      role: "client",
+    }));
+    setView("client");
+    setLoading(false);
   }
 
   if (loading || view === "loading") {
