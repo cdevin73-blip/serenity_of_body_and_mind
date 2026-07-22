@@ -1,4 +1,4 @@
-/* eslint-disable */ // v2
+/* eslint-disable */
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -75,37 +75,22 @@ function genHistory(clientId) {
   return h;
 }
 
-const initGoals = Object.fromEntries(CLIENTS.map(c => [c.id, {
-  primaryGoal: c.goal,
-  weeklyCheckIn: "Every Monday",
-  targetWeight: "",
-  sleepTarget: "8",
-  waterTarget: "8",
-  exerciseTarget: "30",
-  notes: ""
-}]));
+const initGoals = {};
 
-const initMessages = Object.fromEntries(CLIENTS.map(c => [c.id, [
-  { from:"coach", text:"Welcome to Serenity of Body and Mind! I'm so excited to be on this wellness journey with you. 🌿", time:"9:00 AM", date:"Mon" },
-  { from:"client", text:"Thank you! I'm ready to start building better habits.", time:"9:15 AM", date:"Mon" },
-]]));
+const initMessages = {};
 
-const initReminders = Object.fromEntries(CLIENTS.map(c => [c.id, {
-  email: true, sms: false,
-  morningTime: "08:00", eveningTime: "20:00",
-  habits: ["sleep","water","exercise","nutrition","mood"]
-}]));
+const initReminders = {};
 
 // ─── PRIVACY DEFAULTS ─────────────────────────────────────────────────────────
 // All on by default during active coaching. Client can turn off at any time.
-const initPrivacy = Object.fromEntries(CLIENTS.map(c => [c.id, {
-  coachAccessEnabled: true,   // master toggle
-  shareHabits:        true,   // habit tracking & streaks
-  shareJournal:       true,   // daily journal, intention, reflection
-  shareFoodDiary:     true,   // morning/afternoon/evening food logs
-  shareMedications:   true,   // medications & supplements
-  shareMood:          true,   // mood ratings
-}]));
+const initPrivacy = {};
+
+
+// Default values for real Supabase users
+const DEFAULT_GOALS = { primaryGoal:"", weeklyCheckIn:"Every Monday", targetWeight:"", sleepTarget:"8", waterTarget:"8", exerciseTarget:"30", notes:"" };
+const DEFAULT_MESSAGES = [{ from:"coach", text:"Welcome to Serenity of Body and Mind! So excited to be on this wellness journey with you.", time:"9:00 AM", date:"Mon" }];
+const DEFAULT_REMINDERS = { email:true, sms:false, morningTime:"08:00", eveningTime:"20:00", habits:["sleep","water","exercise","nutrition","mood"] };
+const DEFAULT_PRIVACY = { coachAccessEnabled:true, shareHabits:true, shareJournal:true, shareFoodDiary:true, shareMedications:true, shareMood:true };
 
 // ─── STYLES ──────────────────────────────────────────────────────────────────
 
@@ -707,7 +692,8 @@ function getDaysRemaining(dateStr) {
 }
 
 function getAccessInfo(client) {
-  const level = ACCESS_LEVELS[client.accessLevel] || ACCESS_LEVELS.expired;
+  if (!client) return { ...ACCESS_LEVELS.active, daysLeft: null };
+  const level = ACCESS_LEVELS[client.accessLevel] || ACCESS_LEVELS.active;
   const daysLeft = client.accessLevel === 'grace'
     ? getDaysRemaining(client.graceEndDate)
     : client.accessLevel === 'active'
@@ -1223,8 +1209,25 @@ function JournalView({ journalData, onUpdate, readOnly = false }) {
 
 // ─── CLIENT APP ──────────────────────────────────────────────────────────────
 
-function ClientApp({clientId, onLogout}) {
-  const [clientData, setClientData] = useState(() => CLIENTS.find(c=>c.id===clientId)||CLIENTS[0]);
+function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClient}) {
+  const [clientData, setClientData] = useState(() => {
+    if (supabaseProfile) {
+      return {
+        id: supabaseProfile.id,
+        name: supabaseProfile.full_name || supabaseProfile.email || "Client",
+        avatar: (supabaseProfile.full_name || supabaseProfile.email || "C").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2),
+        email: supabaseProfile.email,
+        goal: supabaseProfile.goal || "Building healthy habits",
+        program: supabaseProfile.program || null,
+        programEndDate: supabaseProfile.program_end_date || null,
+        accessLevel: supabaseProfile.access_level || "active",
+        graceEndDate: supabaseProfile.grace_end_date || null,
+        subscriptionPlan: supabaseProfile.subscription_plan || null,
+        messagesThisWeek: supabaseProfile.messages_this_week || 0,
+      };
+    }
+    return { id: clientId, name: "Client", avatar: "C", accessLevel: "active", messagesThisWeek: 0 };
+  });
   const client = clientData;
   const access = getAccessInfo(client);
   const [tab, setTab] = useState("today");
@@ -1233,14 +1236,14 @@ function ClientApp({clientId, onLogout}) {
   const [customHabits, setCustomHabits] = useState([]);
   const [newHabitName, setNewHabitName] = useState("");
   const [journalData, setJournalData] = useState({});
-  const [messages, setMessages] = useState(initMessages[clientId]||[]);
+  const [messages, setMessages] = useState(initMessages[clientId] || DEFAULT_MESSAGES);
   const [msgInput, setMsgInput] = useState("");
   const [msgChars, setMsgChars] = useState(0);
-  const [goals] = useState(initGoals[clientId]);
+  const [goals] = useState(initGoals[clientId] || DEFAULT_GOALS);
   const [insights, setInsights] = useState(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
-  const [privacy, setPrivacy] = useState(() => initPrivacy[clientId] || initPrivacy["c1"]);
+  const [privacy, setPrivacy] = useState(() => initPrivacy[clientId] || DEFAULT_PRIVACY);
   const chatRef = useRef(null);
   const MSG_LIMIT = 500;
   const isViewOnly = access.viewOnly;
@@ -1643,7 +1646,7 @@ function CoachApp({onLogout, supabase, coachProfile}) {
   }
 
   // Privacy helpers for selected client
-  const scPrivacy = selectedClient ? (clientPrivacy[selectedClient] || initPrivacy[selectedClient] || {coachAccessEnabled:true,shareHabits:true,shareJournal:true,shareFoodDiary:true,shareMedications:true,shareMood:true}) : {};
+  const scPrivacy = selectedClient ? (clientPrivacy[selectedClient] || initPrivacy[selectedClient] || DEFAULT_PRIVACY) : DEFAULT_PRIVACY;
   const scLocked = !scPrivacy.coachAccessEnabled;
 
   // Reusable locked placeholder
