@@ -1,4 +1,4 @@
-/* eslint-disable */
+/* eslint-disable */ // v2
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
