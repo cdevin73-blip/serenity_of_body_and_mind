@@ -144,7 +144,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--dark);
 .nav{position:sticky;top:0;z-index:200;background:rgba(253,246,238,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);}
 .nav-inner{max-width:1040px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:62px;padding:0 24px;}
 .nav-logo{font-family:'Fraunces',serif;font-size:24px;color:var(--terra);font-style:italic;font-weight:300;}
-.nav-tabs{display:flex;gap:2px;}
+.nav-tabs{display:flex;gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-shrink:1;min-width:0;}.nav-tabs::-webkit-scrollbar{display:none;}
 .nav-tab{padding:7px 14px;border-radius:10px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--light);cursor:pointer;transition:all .2s;white-space:nowrap;}
 .nav-tab:hover{color:var(--dark);}
 .nav-tab.active{background:rgba(61,125,107,.1);color:var(--terra);}
@@ -466,7 +466,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--dark);
 .coach-locked-sub{font-size:13px;color:var(--light);line-height:1.6;max-width:320px;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
 @keyframes spin{to{transform:rotate(360deg);}}
-`;
+
+@media(max-width:600px){
+  .nav-tab{padding:6px 10px;font-size:11px;}
+  .nav-badge{display:none;}
+  .nav-tabs{gap:1px;}
+}`;
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -1239,7 +1244,8 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
   const [customHabits, setCustomHabits] = useState([]);
   const [newHabitName, setNewHabitName] = useState("");
   const [journalData, setJournalData] = useState({});
-  const [messages, setMessages] = useState(initMessages[clientId] || DEFAULT_MESSAGES);
+  const [messages, setMessages] = useState([]);
+  const [messagesLoading, setMessagesLoading] = useState(true);
   const [msgInput, setMsgInput] = useState("");
   const [msgChars, setMsgChars] = useState(0);
   const [goals] = useState(initGoals[clientId] || DEFAULT_GOALS);
@@ -1272,12 +1278,37 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
     setHistory(h=>({...h,[todayKey]:{...(h[todayKey]||{}),[id]:val}}));
   }
 
-  function sendMsg() {
+  async function sendMsg() {
     if(!msgInput.trim() || !canSendMsg || msgInput.length > MSG_LIMIT) return;
-    setMessages(m=>[...m,{from:"client",text:msgInput.trim(),time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),date:"Today"}]);
-    setClientData(c => ({...c, messagesThisWeek: (c.messagesThisWeek||0) + 1}));
+    const text = msgInput.trim();
     setMsgInput(""); setMsgChars(0);
+
+    // Optimistic UI update
+    const optimistic = {
+      id: Date.now(),
+      from:"client",
+      sender_id: clientId,
+      text,
+      time: new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
+      date:"Today"
+    };
+    setMessages(m=>[...m, optimistic]);
+    setClientData(c => ({...c, messagesThisWeek: (c.messagesThisWeek||0) + 1}));
     setTimeout(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},50);
+
+    // Save to Supabase if available
+    if (supabaseClient && clientId) {
+      // Find coach ID - get first profile with role=coach
+      const { data: coaches } = await supabaseClient
+        .from("profiles").select("id").eq("role","coach").limit(1);
+      if (coaches && coaches.length > 0) {
+        await supabaseClient.from("messages").insert({
+          sender_id: clientId,
+          receiver_id: coaches[0].id,
+          message: text,
+        });
+      }
+    }
   }
 
   async function loadInsights() {
@@ -1286,6 +1317,35 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
     catch { setInsights([{type:"tip",emoji:"💡",label:"Keep Going",text:"You're building great habits! Stay consistent and your coach will share personalized feedback soon."}]); }
     setLoadingInsights(false);
   }
+
+  // Load messages from Supabase
+  useEffect(()=>{
+    async function loadMessages() {
+      if (!supabaseClient || !clientId || clientId.length <= 10) {
+        setMessagesLoading(false);
+        return;
+      }
+      setMessagesLoading(true);
+      const { data, error } = await supabaseClient
+        .from("messages")
+        .select("*")
+        .or(`sender_id.eq.${clientId},receiver_id.eq.${clientId}`)
+        .order("created_at", { ascending: true });
+
+      if (!error && data) {
+        setMessages(data.map(m => ({
+          id: m.id,
+          from: m.sender_id === clientId ? "client" : "coach",
+          sender_id: m.sender_id,
+          text: m.message,
+          time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
+          date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
+        })));
+      }
+      setMessagesLoading(false);
+    }
+    loadMessages();
+  }, [clientId, supabaseClient]);
 
   useEffect(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},[messages]);
 
@@ -1446,12 +1506,17 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
                 <span>This chat is for quick questions &amp; check-ins. For in-depth conversations, book a session. (500 character limit)</span>
               </div>
               <div className="chat-messages" ref={chatRef}>
-                {messages.map((m,i)=>(
-                  <div key={i} className={`msg ${m.from}`}>
-                    <div className="msg-bubble">{m.text}</div>
-                    <div className="msg-meta">{m.from==="coach"?"Coach · ":""}{m.time} · {m.date}</div>
-                  </div>
-                ))}
+                {messagesLoading
+                  ? <div style={{textAlign:"center",padding:24,color:"var(--light)",fontSize:13}}>Loading messages...</div>
+                  : messages.length === 0
+                  ? <div style={{textAlign:"center",padding:24,color:"var(--light)",fontSize:13}}>No messages yet. Say hello!</div>
+                  : messages.map((m,i)=>(
+                    <div key={m.id||i} className={`msg ${m.from}`}>
+                      <div className="msg-bubble">{m.text}</div>
+                      <div className="msg-meta">{m.from==="coach"?"Coach · ":""}{m.time} · {m.date}</div>
+                    </div>
+                  ))
+                }
               </div>
               <div style={{padding:"0 16px 8px"}}>
                 <MessageLimitBar used={msgsUsed} limit={msgLimit}/>
@@ -1632,6 +1697,31 @@ function CoachApp({onLogout, supabase, coachProfile}) {
   function updateReminder(field, val) {
     setReminders(r=>({...r,[selectedClient]:{...r[selectedClient],[field]:val}}));
   }
+
+  // Load messages when coach selects a client
+  useEffect(()=>{
+    async function loadClientMessages() {
+      if (!supabase || !selectedClient || !coachProfile?.id) return;
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .or(`and(sender_id.eq.${selectedClient},receiver_id.eq.${coachProfile.id}),and(sender_id.eq.${coachProfile.id},receiver_id.eq.${selectedClient})`)
+        .order("created_at", { ascending: true });
+
+      if (!error && data) {
+        const formatted = data.map(m => ({
+          id: m.id,
+          from: m.sender_id === coachProfile.id ? "coach" : "client",
+          sender_id: m.sender_id,
+          text: m.message,
+          time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
+          date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
+        }));
+        setMessages(m => ({...m, [selectedClient]: formatted}));
+      }
+    }
+    loadClientMessages();
+  }, [selectedClient, supabase, coachProfile]);
 
   useEffect(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},[scMessages]);
 
