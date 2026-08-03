@@ -1318,21 +1318,26 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
     setLoadingInsights(false);
   }
 
-  // Load messages from Supabase
+  // Load messages from Supabase + poll every 15 seconds for new messages
   useEffect(()=>{
     async function loadMessages() {
       if (!supabaseClient || !clientId || clientId.length <= 10) {
         setMessagesLoading(false);
         return;
       }
-      setMessagesLoading(true);
       const { data, error } = await supabaseClient
         .from("messages")
         .select("*")
         .or(`sender_id.eq.${clientId},receiver_id.eq.${clientId}`)
         .order("created_at", { ascending: true });
 
-      if (!error && data) {
+      if (error) {
+        console.error("Message load error:", error);
+        setMessagesLoading(false);
+        return;
+      }
+
+      if (data) {
         setMessages(data.map(m => ({
           id: m.id,
           from: m.sender_id === clientId ? "client" : "coach",
@@ -1344,7 +1349,11 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
       }
       setMessagesLoading(false);
     }
+
     loadMessages();
+    // Poll every 15 seconds so client sees coach replies without refreshing
+    const interval = setInterval(loadMessages, 15000);
+    return () => clearInterval(interval);
   }, [clientId, supabaseClient]);
 
   useEffect(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},[messages]);
@@ -1721,6 +1730,9 @@ function CoachApp({onLogout, supabase, coachProfile}) {
       }
     }
     loadClientMessages();
+    // Poll every 15 seconds for new client messages
+    const interval = setInterval(loadClientMessages, 15000);
+    return () => clearInterval(interval);
   }, [selectedClient, supabase, coachProfile]);
 
   useEffect(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},[scMessages]);
