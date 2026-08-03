@@ -1683,25 +1683,47 @@ function CoachApp({onLogout, supabase, coachProfile}) {
   async function sendMsg() {
     if(!msgInput.trim()||!selectedClient||!coachProfile?.id) return;
     const text = msgInput.trim();
-    // Optimistic update
-    const msg = {
-      id: Date.now(),
-      from:"coach",
-      sender_id: coachProfile.id,
-      text,
-      time: new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
-      date:"Today"
-    };
-    setMessages(m=>({...m,[selectedClient]:[...(m[selectedClient]||[]),msg]}));
     setMsgInput("");
-    setTimeout(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},50);
-    // Save to Supabase
+
+    // Save to Supabase first, then reload all messages so display is accurate
     const { error } = await supabase.from("messages").insert({
       sender_id: coachProfile.id,
       receiver_id: selectedClient,
       message: text,
     });
-    if (error) console.error("Coach send error:", error);
+
+    if (error) {
+      console.error("Coach send error:", error);
+      return;
+    }
+
+    // Reload messages from Supabase to get the real saved version
+    const { data: clientToCoach } = await supabase
+      .from("messages").select("*")
+      .eq("sender_id", selectedClient)
+      .eq("receiver_id", coachProfile.id)
+      .order("created_at", { ascending: true });
+
+    const { data: coachToClient } = await supabase
+      .from("messages").select("*")
+      .eq("sender_id", coachProfile.id)
+      .eq("receiver_id", selectedClient)
+      .order("created_at", { ascending: true });
+
+    const combined = [...(clientToCoach||[]), ...(coachToClient||[])];
+    combined.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+
+    const formatted = combined.map(m => ({
+      id: m.id,
+      from: m.sender_id === coachProfile.id ? "coach" : "client",
+      sender_id: m.sender_id,
+      text: m.message,
+      time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
+      date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
+    }));
+
+    setMessages(m => ({...m, [selectedClient]: formatted}));
+    setTimeout(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},50);
   }
 
   function addNote() {
