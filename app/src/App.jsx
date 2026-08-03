@@ -1272,10 +1272,27 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
   const msgsUsed = client.messagesThisWeek || 0;
   const canSendMsg = access.canMessage && (msgLimit === null || msgsUsed < msgLimit);
 
-  function logHabit(id, val) {
+  async function logHabit(id, val) {
     const newLog = {...todayLog,[id]:val};
     setTodayLog(newLog);
     setHistory(h=>({...h,[todayKey]:{...(h[todayKey]||{}),[id]:val}}));
+
+    // Save to Supabase
+    if (supabaseClient && clientId && clientId.length > 10) {
+      const upsertData = {
+        user_id: clientId,
+        log_date: todayKey,
+        sleep:     id==="sleep"     ? val : (newLog.sleep||0),
+        water:     id==="water"     ? val : (newLog.water||0),
+        exercise:  id==="exercise"  ? val : (newLog.exercise||0),
+        nutrition: id==="nutrition" ? val : (newLog.nutrition||0),
+        mood:      id==="mood"      ? val : (newLog.mood||0),
+      };
+      const { error } = await supabaseClient
+        .from("habit_logs")
+        .upsert(upsertData, { onConflict: "user_id,log_date" });
+      if (error) console.error("Habit save error:", error);
+    }
   }
 
   async function sendMsg() {
@@ -1364,6 +1381,91 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
   }, [clientId, supabaseClient]);
 
   useEffect(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},[messages]);
+
+  // ── LOAD ALL CLIENT DATA FROM SUPABASE ────────────────────────────
+  useEffect(() => {
+    if (!supabaseClient || !clientId || clientId.length <= 10) return;
+
+    async function loadAllData() {
+      // Load habit logs (last 60 days)
+      const { data: habitData } = await supabaseClient
+        .from("habit_logs")
+        .select("*")
+        .eq("user_id", clientId)
+        .order("log_date", { ascending: true });
+
+      if (habitData) {
+        const h = {};
+        habitData.forEach(row => {
+          h[row.log_date] = {
+            sleep: row.sleep || 0,
+            water: row.water || 0,
+            exercise: row.exercise || 0,
+            nutrition: row.nutrition || 0,
+            mood: row.mood || 0,
+          };
+        });
+        setHistory(h);
+        setTodayLog(h[todayKey] || {});
+      }
+
+      // Load journal entries
+      const { data: journalRows } = await supabaseClient
+        .from("journal_entries")
+        .select("*")
+        .eq("user_id", clientId)
+        .order("entry_date", { ascending: true });
+
+      if (journalRows) {
+        const j = {};
+        journalRows.forEach(row => {
+          j[row.entry_date] = {
+            intention: row.intention || "",
+            reflection: row.reflection || "",
+            gratitude: [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""],
+            medications: row.medications || "",
+            exercise: row.exercise || "",
+            meditation: row.meditation || "",
+            morning:   { food: row.morning_food||"",   water: row.morning_water||0 },
+            afternoon: { food: row.afternoon_food||"", water: row.afternoon_water||0 },
+            evening:   { food: row.evening_food||"",   water: row.evening_water||0 },
+          };
+        });
+        setJournalData(j);
+      }
+
+      // Load goals
+      const { data: goalData } = await supabaseClient
+        .from("goals")
+        .select("*")
+        .eq("user_id", clientId)
+        .single();
+
+      if (goalData) {
+        // Goals loaded - could set to state if needed
+      }
+
+      // Load privacy settings
+      const { data: privacyData } = await supabaseClient
+        .from("privacy_settings")
+        .select("*")
+        .eq("user_id", clientId)
+        .single();
+
+      if (privacyData) {
+        setPrivacy({
+          coachAccessEnabled: privacyData.coach_access_enabled,
+          shareHabits:        privacyData.share_habits,
+          shareJournal:       privacyData.share_journal,
+          shareFoodDiary:     privacyData.share_food_diary,
+          shareMedications:   privacyData.share_medications,
+          shareMood:          privacyData.share_mood,
+        });
+      }
+    }
+
+    loadAllData();
+  }, [clientId, supabaseClient]);
 
   const tabs = [
     {id:"today",label:"Today"},
@@ -1588,7 +1690,24 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
             <div className="greeting-title">Privacy <em>Settings</em> 🔒</div>
             <div style={{fontSize:13,color:"var(--light)",marginTop:4}}>Control what your coach can see — you're always in charge of your data</div>
           </div>
-          <PrivacySettings privacy={privacy} onChange={setPrivacy} />
+          <PrivacySettings privacy={privacy} onChange={async (newPrivacy) => {
+          setPrivacy(newPrivacy);
+          // Save to Supabase
+          if (supabaseClient && clientId && clientId.length > 10) {
+            const { error } = await supabaseClient
+              .from("privacy_settings")
+              .upsert({
+                user_id:              clientId,
+                coach_access_enabled: newPrivacy.coachAccessEnabled,
+                share_habits:         newPrivacy.shareHabits,
+                share_journal:        newPrivacy.shareJournal,
+                share_food_diary:     newPrivacy.shareFoodDiary,
+                share_medications:    newPrivacy.shareMedications,
+                share_mood:           newPrivacy.shareMood,
+              }, { onConflict: "user_id" });
+            if (error) console.error("Privacy save error:", error);
+          }
+        }} />
         </>}
 
         {tab==="journal" && <>
@@ -1598,7 +1717,33 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
           </div>
           <JournalView
             journalData={journalData}
-            onUpdate={(dateKey, entry) => setJournalData(d => ({...d, [dateKey]: entry}))}
+            onUpdate={async (dateKey, entry) => {
+              setJournalData(d => ({...d, [dateKey]: entry}));
+              // Save to Supabase
+              if (supabaseClient && clientId && clientId.length > 10) {
+                const { error } = await supabaseClient
+                  .from("journal_entries")
+                  .upsert({
+                    user_id:         clientId,
+                    entry_date:      dateKey,
+                    intention:       entry.intention || "",
+                    reflection:      entry.reflection || "",
+                    gratitude_1:     entry.gratitude?.[0] || "",
+                    gratitude_2:     entry.gratitude?.[1] || "",
+                    gratitude_3:     entry.gratitude?.[2] || "",
+                    medications:     entry.medications || "",
+                    exercise:        entry.exercise || "",
+                    meditation:      entry.meditation || "",
+                    morning_food:    entry.morning?.food || "",
+                    morning_water:   entry.morning?.water || 0,
+                    afternoon_food:  entry.afternoon?.food || "",
+                    afternoon_water: entry.afternoon?.water || 0,
+                    evening_food:    entry.evening?.food || "",
+                    evening_water:   entry.evening?.water || 0,
+                  }, { onConflict: "user_id,entry_date" });
+                if (error) console.error("Journal save error:", error);
+              }
+            }}
             readOnly={false}
           />
         </>}
@@ -1671,7 +1816,9 @@ function CoachApp({onLogout, supabase, coachProfile}) {
 
   const weekDays = getWeekDays(7);
   const sc = clients.find(c=>c.id===selectedClient);
-  const scData = selectedClient ? allClientData[selectedClient] : null;
+  // Get client habit data - from Supabase cache or empty
+  const habitCache = clientAccessLevels._habitCache || {};
+  const scData = selectedClient ? (habitCache[selectedClient] || allClientData[selectedClient] || {}) : null;
   const scStreak = scData ? getStreak(scData) : 0;
   const scNotes = selectedClient ? (coachNotes[selectedClient]||[]) : [];
   const scGoals = selectedClient ? goals[selectedClient] : null;
@@ -1753,6 +1900,83 @@ function CoachApp({onLogout, supabase, coachProfile}) {
   }
 
   // Load messages when coach selects a client
+  // Load client habit data when coach selects a client
+  useEffect(() => {
+    if (!supabase || !selectedClient || !coachProfile?.id) return;
+    async function loadClientHabits() {
+      const { data } = await supabase
+        .from("habit_logs")
+        .select("*")
+        .eq("user_id", selectedClient)
+        .order("log_date", { ascending: true });
+
+      if (data) {
+        const h = {};
+        data.forEach(row => {
+          h[row.log_date] = {
+            sleep: row.sleep||0, water: row.water||0,
+            exercise: row.exercise||0, nutrition: row.nutrition||0, mood: row.mood||0,
+          };
+        });
+        // Store in allClientData equivalent
+        setClientAccessLevels(prev => ({...prev, _habitCache: {...(prev._habitCache||{}), [selectedClient]: h}}));
+      }
+
+      // Load client journal
+      const { data: jData } = await supabase
+        .from("journal_entries")
+        .select("*")
+        .eq("user_id", selectedClient)
+        .order("entry_date", { ascending: true });
+
+      if (jData) {
+        const j = {};
+        jData.forEach(row => {
+          j[row.entry_date] = {
+            intention: row.intention||"", reflection: row.reflection||"",
+            gratitude: [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""],
+            medications: row.medications||"", exercise: row.exercise||"",
+            meditation: row.meditation||"",
+            morning:   { food: row.morning_food||"",   water: row.morning_water||0 },
+            afternoon: { food: row.afternoon_food||"", water: row.afternoon_water||0 },
+            evening:   { food: row.evening_food||"",   water: row.evening_water||0 },
+          };
+        });
+        setClientJournals(j => ({...j, [selectedClient]: jData.reduce((acc, row) => {
+          acc[row.entry_date] = {
+            intention: row.intention||"", reflection: row.reflection||"",
+            gratitude: [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""],
+            medications: row.medications||"", exercise: row.exercise||"",
+            meditation: row.meditation||"",
+            morning:   { food: row.morning_food||"",   water: row.morning_water||0 },
+            afternoon: { food: row.afternoon_food||"", water: row.afternoon_water||0 },
+            evening:   { food: row.evening_food||"",   water: row.evening_water||0 },
+          };
+          return acc;
+        }, {})}));
+      }
+
+      // Load client privacy settings
+      const { data: pData } = await supabase
+        .from("privacy_settings")
+        .select("*")
+        .eq("user_id", selectedClient)
+        .single();
+
+      if (pData) {
+        setClientPrivacy(prev => ({...prev, [selectedClient]: {
+          coachAccessEnabled: pData.coach_access_enabled,
+          shareHabits:        pData.share_habits,
+          shareJournal:       pData.share_journal,
+          shareFoodDiary:     pData.share_food_diary,
+          shareMedications:   pData.share_medications,
+          shareMood:          pData.share_mood,
+        }}));
+      }
+    }
+    loadClientHabits();
+  }, [selectedClient, supabase, coachProfile]);
+
   useEffect(()=>{
     async function loadClientMessages() {
       if (!supabase || !selectedClient || !coachProfile?.id) return;
