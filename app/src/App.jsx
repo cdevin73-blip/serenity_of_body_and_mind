@@ -1359,7 +1359,7 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
 
     loadMessages();
     // Poll every 15 seconds so client sees coach replies without refreshing
-    const interval = setInterval(loadMessages, 15000);
+    const interval = setInterval(loadMessages, 30000);
     return () => clearInterval(interval);
   }, [clientId, supabaseClient]);
 
@@ -1680,12 +1680,28 @@ function CoachApp({onLogout, supabase, coachProfile}) {
   const CLIENTS = clients;
   const scMessages = selectedClient ? (messages[selectedClient]||[]) : [];
 
-  function sendMsg() {
-    if(!msgInput.trim()||!selectedClient) return;
-    const msg={from:"coach",text:msgInput.trim(),time:new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),date:"Today"};
+  async function sendMsg() {
+    if(!msgInput.trim()||!selectedClient||!coachProfile?.id) return;
+    const text = msgInput.trim();
+    // Optimistic update
+    const msg = {
+      id: Date.now(),
+      from:"coach",
+      sender_id: coachProfile.id,
+      text,
+      time: new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
+      date:"Today"
+    };
     setMessages(m=>({...m,[selectedClient]:[...(m[selectedClient]||[]),msg]}));
     setMsgInput("");
     setTimeout(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},50);
+    // Save to Supabase
+    const { error } = await supabase.from("messages").insert({
+      sender_id: coachProfile.id,
+      receiver_id: selectedClient,
+      message: text,
+    });
+    if (error) console.error("Coach send error:", error);
   }
 
   function addNote() {
@@ -1748,7 +1764,7 @@ function CoachApp({onLogout, supabase, coachProfile}) {
     }
     loadClientMessages();
     // Poll every 15 seconds for new client messages
-    const interval = setInterval(loadClientMessages, 15000);
+    const interval = setInterval(loadClientMessages, 30000);
     return () => clearInterval(interval);
   }, [selectedClient, supabase, coachProfile]);
 
@@ -2318,7 +2334,9 @@ export default function App() {
     });
 
     // Listen for auth changes (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Ignore TOKEN_REFRESHED to prevent page resets during polling
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "TOKEN_REFRESHED") return; // Don't reset view on token refresh
       setSession(session);
       if (session) loadProfile(session.user);
       else { setProfile(null); setView("auth"); }
