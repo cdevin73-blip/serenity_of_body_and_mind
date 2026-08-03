@@ -1325,11 +1325,18 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
         setMessagesLoading(false);
         return;
       }
-      const { data, error } = await supabaseClient
-        .from("messages")
-        .select("*")
-        .or(`sender_id.eq.${clientId},receiver_id.eq.${clientId}`)
+      // Get all messages where client is sender or receiver
+      const { data: sent } = await supabaseClient
+        .from("messages").select("*").eq("sender_id", clientId)
         .order("created_at", { ascending: true });
+      const { data: received } = await supabaseClient
+        .from("messages").select("*").eq("receiver_id", clientId)
+        .order("created_at", { ascending: true });
+
+      const combined = [...(sent||[]), ...(received||[])];
+      combined.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+      const data = combined;
+      const error = null;
 
       if (error) {
         console.error("Message load error:", error);
@@ -1711,14 +1718,24 @@ function CoachApp({onLogout, supabase, coachProfile}) {
   useEffect(()=>{
     async function loadClientMessages() {
       if (!supabase || !selectedClient || !coachProfile?.id) return;
-      const { data, error } = await supabase
-        .from("messages")
-        .select("*")
-        .or(`and(sender_id.eq.${selectedClient},receiver_id.eq.${coachProfile.id}),and(sender_id.eq.${coachProfile.id},receiver_id.eq.${selectedClient})`)
+      // Two queries: client→coach and coach→client, then combine
+      const { data: clientToCoach } = await supabase
+        .from("messages").select("*")
+        .eq("sender_id", selectedClient)
+        .eq("receiver_id", coachProfile.id)
         .order("created_at", { ascending: true });
 
-      if (!error && data) {
-        const formatted = data.map(m => ({
+      const { data: coachToClient } = await supabase
+        .from("messages").select("*")
+        .eq("sender_id", coachProfile.id)
+        .eq("receiver_id", selectedClient)
+        .order("created_at", { ascending: true });
+
+      const combined = [...(clientToCoach||[]), ...(coachToClient||[])];
+      combined.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+
+      if (combined.length >= 0) {
+        const formatted = combined.map(m => ({
           id: m.id,
           from: m.sender_id === coachProfile.id ? "coach" : "client",
           sender_id: m.sender_id,
