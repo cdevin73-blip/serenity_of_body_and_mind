@@ -476,7 +476,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--dark);
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 const today = new Date();
-const todayKey = today.toISOString().split("T")[0];
+// Use local date not UTC - prevents yesterday's date showing in Pacific time
+const todayKey = today.getFullYear() + "-" +
+  String(today.getMonth()+1).padStart(2,"0") + "-" +
+  String(today.getDate()).padStart(2,"0");
 const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -1816,9 +1819,8 @@ function CoachApp({onLogout, supabase, coachProfile}) {
 
   const weekDays = getWeekDays(7);
   const sc = clients.find(c=>c.id===selectedClient);
-  // Get client habit data - from Supabase cache or empty
-  const habitCache = clientAccessLevels._habitCache || {};
-  const scData = selectedClient ? (habitCache[selectedClient] || allClientData[selectedClient] || {}) : null;
+  // Get client habit data from loaded coach client data
+  const scData = selectedClient ? (clientJournals["_habits_"+selectedClient] || {}) : null;
   const scStreak = scData ? getStreak(scData) : 0;
   const scNotes = selectedClient ? (coachNotes[selectedClient]||[]) : [];
   const scGoals = selectedClient ? goals[selectedClient] : null;
@@ -1918,8 +1920,8 @@ function CoachApp({onLogout, supabase, coachProfile}) {
             exercise: row.exercise||0, nutrition: row.nutrition||0, mood: row.mood||0,
           };
         });
-        // Store in allClientData equivalent
-        setClientAccessLevels(prev => ({...prev, _habitCache: {...(prev._habitCache||{}), [selectedClient]: h}}));
+        // Store client habit data using a prefixed key in clientJournals
+        setClientJournals(prev => ({...prev, ["_habits_"+selectedClient]: h}));
       }
 
       // Load client journal
