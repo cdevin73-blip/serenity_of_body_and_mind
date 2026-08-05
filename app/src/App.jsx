@@ -1242,8 +1242,8 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
   const client = clientData;
   const access = getAccessInfo(client);
   const [tab, setTab] = useState("today");
-  const [history, setHistory] = useState(()=>genHistory(clientId));
-  const [todayLog, setTodayLog] = useState(history[todayKey]||{});
+  const [history, setHistory] = useState({});
+  const [todayLog, setTodayLog] = useState({});
   const [customHabits, setCustomHabits] = useState([]);
   const [newHabitName, setNewHabitName] = useState("");
   const [journalData, setJournalData] = useState({});
@@ -1251,14 +1251,15 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
   const [messagesLoading, setMessagesLoading] = useState(true);
   const [msgInput, setMsgInput] = useState("");
   const [msgChars, setMsgChars] = useState(0);
-  const [goals] = useState(initGoals[clientId] || DEFAULT_GOALS);
+  const [goals] = useState(DEFAULT_GOALS);
   const [insights, setInsights] = useState(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
-  const [privacy, setPrivacy] = useState(() => initPrivacy[clientId] || DEFAULT_PRIVACY);
+  const [privacy, setPrivacy] = useState(DEFAULT_PRIVACY);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const chatRef = useRef(null);
   const MSG_LIMIT = 500;
-  const isViewOnly = access.viewOnly;
+  const isViewOnly = access.viewOnly || false;
 
   const weekDays = getWeekDays(7);
   const streak = getStreak(history);
@@ -1303,32 +1304,34 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
     const text = msgInput.trim();
     setMsgInput(""); setMsgChars(0);
 
-    // Optimistic UI update
-    const optimistic = {
-      id: Date.now(),
-      from:"client",
-      sender_id: clientId,
-      text,
-      time: new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
-      date:"Today"
-    };
-    setMessages(m=>[...m, optimistic]);
-    setClientData(c => ({...c, messagesThisWeek: (c.messagesThisWeek||0) + 1}));
-    setTimeout(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},50);
+    if (!supabaseClient || !clientId || clientId.length <= 10) return;
 
-    // Save to Supabase if available
-    if (supabaseClient && clientId) {
-      // Find coach ID - get first profile with role=coach
-      const { data: coaches } = await supabaseClient
-        .from("profiles").select("id").eq("role","coach").limit(1);
-      if (coaches && coaches.length > 0) {
-        await supabaseClient.from("messages").insert({
-          sender_id: clientId,
-          receiver_id: coaches[0].id,
-          message: text,
-        });
-      }
-    }
+    // Get coach ID
+    const { data: coaches } = await supabaseClient
+      .from("profiles").select("id").eq("role","coach").limit(1);
+
+    if (!coaches || coaches.length === 0) return;
+
+    // Save to Supabase then reload
+    const { error } = await supabaseClient.from("messages").insert({
+      sender_id: clientId,
+      receiver_id: coaches[0].id,
+      message: text,
+    });
+
+    if (error) { console.error("Message send error:", error); return; }
+
+    // Reload messages to show saved version
+    const { data: sent }     = await supabaseClient.from("messages").select("*").eq("sender_id", clientId).order("created_at",{ascending:true});
+    const { data: received } = await supabaseClient.from("messages").select("*").eq("receiver_id", clientId).order("created_at",{ascending:true});
+    const all = [...(sent||[]), ...(received||[])];
+    all.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    setMessages(all.map(m => ({
+      id: m.id, from: m.sender_id === clientId ? "client" : "coach",
+      sender_id: m.sender_id, text: m.message,
+      time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
+      date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
+    })));
   }
 
   async function loadInsights() {
@@ -1339,138 +1342,130 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
   }
 
   // Load messages from Supabase + poll every 15 seconds for new messages
-  useEffect(()=>{
-    async function loadMessages() {
-      if (!supabaseClient || !clientId || clientId.length <= 10) {
-        setMessagesLoading(false);
-        return;
-      }
-      // Get all messages where client is sender or receiver
-      const { data: sent } = await supabaseClient
-        .from("messages").select("*").eq("sender_id", clientId)
-        .order("created_at", { ascending: true });
-      const { data: received } = await supabaseClient
-        .from("messages").select("*").eq("receiver_id", clientId)
-        .order("created_at", { ascending: true });
 
-      const combined = [...(sent||[]), ...(received||[])];
-      combined.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
-      const data = combined;
-      const error = null;
-
-      if (error) {
-        console.error("Message load error:", error);
-        setMessagesLoading(false);
-        return;
-      }
-
-      if (data) {
-        setMessages(data.map(m => ({
-          id: m.id,
-          from: m.sender_id === clientId ? "client" : "coach",
-          sender_id: m.sender_id,
-          text: m.message,
-          time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
-          date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
-        })));
-      }
-      setMessagesLoading(false);
-    }
-
-    loadMessages();
-    // Poll every 15 seconds so client sees coach replies without refreshing
-    const interval = setInterval(loadMessages, 30000);
-    return () => clearInterval(interval);
-  }, [clientId, supabaseClient]);
-
-  useEffect(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},[messages]);
-
-  // ── LOAD ALL CLIENT DATA FROM SUPABASE ────────────────────────────
+  // ── SUPABASE DATA LOADING ────────────────────────────────────────
   useEffect(() => {
     if (!supabaseClient || !clientId || clientId.length <= 10) return;
 
-    async function loadAllData() {
-      // Load habit logs (last 60 days)
-      const { data: habitData } = await supabaseClient
+    async function loadData() {
+      // 1. Load habit logs
+      const { data: habits } = await supabaseClient
         .from("habit_logs")
         .select("*")
         .eq("user_id", clientId)
         .order("log_date", { ascending: true });
 
-      if (habitData) {
+      if (habits) {
         const h = {};
-        habitData.forEach(row => {
+        habits.forEach(row => {
           h[row.log_date] = {
-            sleep: row.sleep || 0,
-            water: row.water || 0,
-            exercise: row.exercise || 0,
-            nutrition: row.nutrition || 0,
-            mood: row.mood || 0,
+            sleep:     parseFloat(row.sleep)     || 0,
+            water:     parseInt(row.water)       || 0,
+            exercise:  parseInt(row.exercise)    || 0,
+            nutrition: parseInt(row.nutrition)   || 0,
+            mood:      parseInt(row.mood)        || 0,
           };
         });
         setHistory(h);
-        setTodayLog(h[todayKey] || {});
+        // Only set today's log from DB if there's a record for today
+        // This prevents yesterday's values showing as today's
+        if (h[todayKey]) {
+          setTodayLog(h[todayKey]);
+        } else {
+          setTodayLog({});
+        }
       }
 
-      // Load journal entries
-      const { data: journalRows } = await supabaseClient
+      // 2. Load journal entries
+      const { data: journal } = await supabaseClient
         .from("journal_entries")
         .select("*")
-        .eq("user_id", clientId)
-        .order("entry_date", { ascending: true });
+        .eq("user_id", clientId);
 
-      if (journalRows) {
+      if (journal) {
         const j = {};
-        journalRows.forEach(row => {
+        journal.forEach(row => {
           j[row.entry_date] = {
-            intention: row.intention || "",
+            intention:  row.intention  || "",
             reflection: row.reflection || "",
-            gratitude: [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""],
+            gratitude:  [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""],
             medications: row.medications || "",
-            exercise: row.exercise || "",
+            exercise:   row.exercise   || "",
             meditation: row.meditation || "",
-            morning:   { food: row.morning_food||"",   water: row.morning_water||0 },
-            afternoon: { food: row.afternoon_food||"", water: row.afternoon_water||0 },
-            evening:   { food: row.evening_food||"",   water: row.evening_water||0 },
+            morning:    { food: row.morning_food||"",   water: row.morning_water||0 },
+            afternoon:  { food: row.afternoon_food||"", water: row.afternoon_water||0 },
+            evening:    { food: row.evening_food||"",   water: row.evening_water||0 },
           };
         });
         setJournalData(j);
       }
 
-      // Load goals
-      const { data: goalData } = await supabaseClient
-        .from("goals")
-        .select("*")
-        .eq("user_id", clientId)
-        .single();
-
-      if (goalData) {
-        // Goals loaded - could set to state if needed
-      }
-
-      // Load privacy settings
-      const { data: privacyData } = await supabaseClient
+      // 3. Load privacy settings
+      const { data: priv } = await supabaseClient
         .from("privacy_settings")
         .select("*")
         .eq("user_id", clientId)
-        .single();
+        .maybeSingle();
 
-      if (privacyData) {
+      if (priv) {
         setPrivacy({
-          coachAccessEnabled: privacyData.coach_access_enabled,
-          shareHabits:        privacyData.share_habits,
-          shareJournal:       privacyData.share_journal,
-          shareFoodDiary:     privacyData.share_food_diary,
-          shareMedications:   privacyData.share_medications,
-          shareMood:          privacyData.share_mood,
+          coachAccessEnabled: priv.coach_access_enabled ?? true,
+          shareHabits:        priv.share_habits        ?? true,
+          shareJournal:       priv.share_journal       ?? true,
+          shareFoodDiary:     priv.share_food_diary    ?? true,
+          shareMedications:   priv.share_medications   ?? true,
+          shareMood:          priv.share_mood          ?? true,
         });
       }
+
+      setDataLoaded(true);
     }
 
-    loadAllData();
+    loadData();
   }, [clientId, supabaseClient]);
 
-  const tabs = [
+  // ── MESSAGE LOADING + POLLING ──────────────────────────────────────
+  useEffect(() => {
+    if (!supabaseClient || !clientId || clientId.length <= 10) {
+      setMessagesLoading(false);
+      return;
+    }
+
+    async function loadMessages() {
+      const { data: sent } = await supabaseClient
+        .from("messages").select("*")
+        .eq("sender_id", clientId)
+        .order("created_at", { ascending: true });
+
+      const { data: received } = await supabaseClient
+        .from("messages").select("*")
+        .eq("receiver_id", clientId)
+        .order("created_at", { ascending: true });
+
+      const all = [...(sent||[]), ...(received||[])];
+      all.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+
+      setMessages(all.map(m => ({
+        id:         m.id,
+        from:       m.sender_id === clientId ? "client" : "coach",
+        sender_id:  m.sender_id,
+        text:       m.message,
+        time:       new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
+        date:       new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
+      })));
+      setMessagesLoading(false);
+    }
+
+    loadMessages();
+    const interval = setInterval(loadMessages, 30000);
+    return () => clearInterval(interval);
+  }, [clientId, supabaseClient]);
+
+  useEffect(()=>{
+    if(chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+  }, [messages]);
+
+    const tabs = [
     {id:"today",label:"Today"},
     {id:"journal",label:"📓 Journal"},
     {id:"history",label:"History"},
@@ -1819,8 +1814,8 @@ function CoachApp({onLogout, supabase, coachProfile}) {
 
   const weekDays = getWeekDays(7);
   const sc = clients.find(c=>c.id===selectedClient);
-  // Get client habit data from loaded coach client data
-  const scData = selectedClient ? (clientJournals["_habits_"+selectedClient] || {}) : null;
+  // Get client habit data loaded from Supabase
+  const scData = selectedClient ? (clientJournals["__habits__"+selectedClient] || null) : null;
   const scStreak = scData ? getStreak(scData) : 0;
   const scNotes = selectedClient ? (coachNotes[selectedClient]||[]) : [];
   const scGoals = selectedClient ? goals[selectedClient] : null;
@@ -1834,44 +1829,25 @@ function CoachApp({onLogout, supabase, coachProfile}) {
     const text = msgInput.trim();
     setMsgInput("");
 
-    // Save to Supabase first, then reload all messages so display is accurate
     const { error } = await supabase.from("messages").insert({
       sender_id: coachProfile.id,
       receiver_id: selectedClient,
       message: text,
     });
 
-    if (error) {
-      console.error("Coach send error:", error);
-      return;
-    }
+    if (error) { console.error("Coach send error:", error); return; }
 
-    // Reload messages from Supabase to get the real saved version
-    const { data: clientToCoach } = await supabase
-      .from("messages").select("*")
-      .eq("sender_id", selectedClient)
-      .eq("receiver_id", coachProfile.id)
-      .order("created_at", { ascending: true });
-
-    const { data: coachToClient } = await supabase
-      .from("messages").select("*")
-      .eq("sender_id", coachProfile.id)
-      .eq("receiver_id", selectedClient)
-      .order("created_at", { ascending: true });
-
-    const combined = [...(clientToCoach||[]), ...(coachToClient||[])];
-    combined.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
-
-    const formatted = combined.map(m => ({
-      id: m.id,
-      from: m.sender_id === coachProfile.id ? "coach" : "client",
-      sender_id: m.sender_id,
-      text: m.message,
+    // Reload after save
+    const { data: toCoach }   = await supabase.from("messages").select("*").eq("sender_id", selectedClient).eq("receiver_id", coachProfile.id).order("created_at",{ascending:true});
+    const { data: fromCoach } = await supabase.from("messages").select("*").eq("sender_id", coachProfile.id).eq("receiver_id", selectedClient).order("created_at",{ascending:true});
+    const all = [...(toCoach||[]), ...(fromCoach||[])];
+    all.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    setMessages(prev => ({...prev, [selectedClient]: all.map(m => ({
+      id: m.id, from: m.sender_id === coachProfile.id ? "coach" : "client",
+      sender_id: m.sender_id, text: m.message,
       time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
       date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
-    }));
-
-    setMessages(m => ({...m, [selectedClient]: formatted}));
+    }))}));
     setTimeout(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},50);
   }
 
@@ -1902,13 +1878,14 @@ function CoachApp({onLogout, supabase, coachProfile}) {
   }
 
   // Load messages when coach selects a client
-  // Load client habit data when coach selects a client
+  // ── COACH: Load client data when a client is selected ────────────
   useEffect(() => {
     if (!supabase || !selectedClient || !coachProfile?.id) return;
-    async function loadClientHabits() {
+
+    // Load client habits
+    async function loadHabits() {
       const { data } = await supabase
-        .from("habit_logs")
-        .select("*")
+        .from("habit_logs").select("*")
         .eq("user_id", selectedClient)
         .order("log_date", { ascending: true });
 
@@ -1916,24 +1893,25 @@ function CoachApp({onLogout, supabase, coachProfile}) {
         const h = {};
         data.forEach(row => {
           h[row.log_date] = {
-            sleep: row.sleep||0, water: row.water||0,
-            exercise: row.exercise||0, nutrition: row.nutrition||0, mood: row.mood||0,
+            sleep: parseFloat(row.sleep)||0, water: parseInt(row.water)||0,
+            exercise: parseInt(row.exercise)||0, nutrition: parseInt(row.nutrition)||0,
+            mood: parseInt(row.mood)||0,
           };
         });
-        // Store client habit data using a prefixed key in clientJournals
-        setClientJournals(prev => ({...prev, ["_habits_"+selectedClient]: h}));
+        // Store in a dedicated state keyed by client ID
+        setClientJournals(prev => ({...prev, ["__habits__"+selectedClient]: h}));
       }
+    }
 
-      // Load client journal
-      const { data: jData } = await supabase
-        .from("journal_entries")
-        .select("*")
-        .eq("user_id", selectedClient)
-        .order("entry_date", { ascending: true });
+    // Load client journal
+    async function loadJournal() {
+      const { data } = await supabase
+        .from("journal_entries").select("*")
+        .eq("user_id", selectedClient);
 
-      if (jData) {
+      if (data) {
         const j = {};
-        jData.forEach(row => {
+        data.forEach(row => {
           j[row.entry_date] = {
             intention: row.intention||"", reflection: row.reflection||"",
             gratitude: [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""],
@@ -1944,101 +1922,56 @@ function CoachApp({onLogout, supabase, coachProfile}) {
             evening:   { food: row.evening_food||"",   water: row.evening_water||0 },
           };
         });
-        setClientJournals(j => ({...j, [selectedClient]: jData.reduce((acc, row) => {
-          acc[row.entry_date] = {
-            intention: row.intention||"", reflection: row.reflection||"",
-            gratitude: [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""],
-            medications: row.medications||"", exercise: row.exercise||"",
-            meditation: row.meditation||"",
-            morning:   { food: row.morning_food||"",   water: row.morning_water||0 },
-            afternoon: { food: row.afternoon_food||"", water: row.afternoon_water||0 },
-            evening:   { food: row.evening_food||"",   water: row.evening_water||0 },
-          };
-          return acc;
-        }, {})}));
+        setClientJournals(prev => ({...prev, [selectedClient]: j}));
       }
+    }
 
-      // Load client privacy settings
-      const { data: pData } = await supabase
-        .from("privacy_settings")
-        .select("*")
-        .eq("user_id", selectedClient)
-        .single();
+    // Load client privacy settings
+    async function loadPrivacy() {
+      const { data } = await supabase
+        .from("privacy_settings").select("*")
+        .eq("user_id", selectedClient).maybeSingle();
 
-      if (pData) {
+      if (data) {
         setClientPrivacy(prev => ({...prev, [selectedClient]: {
-          coachAccessEnabled: pData.coach_access_enabled,
-          shareHabits:        pData.share_habits,
-          shareJournal:       pData.share_journal,
-          shareFoodDiary:     pData.share_food_diary,
-          shareMedications:   pData.share_medications,
-          shareMood:          pData.share_mood,
+          coachAccessEnabled: data.coach_access_enabled ?? true,
+          shareHabits:        data.share_habits        ?? true,
+          shareJournal:       data.share_journal       ?? true,
+          shareFoodDiary:     data.share_food_diary    ?? true,
+          shareMedications:   data.share_medications   ?? true,
+          shareMood:          data.share_mood          ?? true,
         }}));
       }
     }
-    loadClientHabits();
-  }, [selectedClient, supabase, coachProfile]);
 
-  useEffect(()=>{
-    async function loadClientMessages() {
-      if (!supabase || !selectedClient || !coachProfile?.id) return;
-      // Two queries: client→coach and coach→client, then combine
-      const { data: clientToCoach } = await supabase
-        .from("messages").select("*")
-        .eq("sender_id", selectedClient)
-        .eq("receiver_id", coachProfile.id)
-        .order("created_at", { ascending: true });
+    // Load messages between coach and this client
+    async function loadMessages() {
+      const { data: toCoach }   = await supabase.from("messages").select("*").eq("sender_id", selectedClient).eq("receiver_id", coachProfile.id).order("created_at",{ascending:true});
+      const { data: fromCoach } = await supabase.from("messages").select("*").eq("sender_id", coachProfile.id).eq("receiver_id", selectedClient).order("created_at",{ascending:true});
 
-      const { data: coachToClient } = await supabase
-        .from("messages").select("*")
-        .eq("sender_id", coachProfile.id)
-        .eq("receiver_id", selectedClient)
-        .order("created_at", { ascending: true });
+      const all = [...(toCoach||[]), ...(fromCoach||[])];
+      all.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
 
-      const combined = [...(clientToCoach||[]), ...(coachToClient||[])];
-      combined.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
-
-      if (combined.length >= 0) {
-        const formatted = combined.map(m => ({
-          id: m.id,
-          from: m.sender_id === coachProfile.id ? "coach" : "client",
-          sender_id: m.sender_id,
-          text: m.message,
-          time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
-          date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
-        }));
-        setMessages(m => ({...m, [selectedClient]: formatted}));
-      }
+      setMessages(prev => ({...prev, [selectedClient]: all.map(m => ({
+        id: m.id,
+        from: m.sender_id === coachProfile.id ? "coach" : "client",
+        sender_id: m.sender_id,
+        text: m.message,
+        time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
+        date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
+      }))}));
     }
-    loadClientMessages();
-    // Poll every 15 seconds for new client messages
-    const interval = setInterval(loadClientMessages, 30000);
+
+    loadHabits();
+    loadJournal();
+    loadPrivacy();
+    loadMessages();
+
+    const interval = setInterval(loadMessages, 30000);
     return () => clearInterval(interval);
   }, [selectedClient, supabase, coachProfile]);
 
-  useEffect(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},[scMessages]);
-
-  const coachTabs=[{id:"clients",label:"Clients"},{id:"reports",label:"Reports"}];
-  const clientTabs=[{id:"overview",label:"Overview"},{id:"access",label:"🔑 Access"},{id:"journal",label:"📓 Journal"},{id:"insights",label:"✨ Insights"},{id:"goals",label:"Goals"},{id:"reminders",label:"Reminders"},{id:"chat",label:"Messages"},{id:"notes",label:"Notes"}];
-
-  // Reports tab – aggregate
-  function getAggregate() {
-    const days = reportPeriod==="weekly"?7:30;
-    return clients.map(c=>{
-      const h=allClientData[c.id]||{};
-      const streak=getStreak(h);
-      const completions=[];
-      for(let d=0;d<days;d++){
-        const date=new Date(today); date.setDate(today.getDate()-d);
-        const key=date.toISOString().split("T")[0];
-        completions.push(getCompletion(h[key]));
-      }
-      const avg=Math.round(completions.reduce((a,b)=>a+b,0)/completions.length);
-      return {...c,streak,avg};
-    });
-  }
-
-  // Privacy helpers for selected client
+    // Privacy helpers for selected client
   const scPrivacy = selectedClient ? (clientPrivacy[selectedClient] || initPrivacy[selectedClient] || DEFAULT_PRIVACY) : DEFAULT_PRIVACY;
   const scLocked = !scPrivacy.coachAccessEnabled;
 
@@ -2293,7 +2226,13 @@ function CoachApp({onLogout, supabase, coachProfile}) {
                       minWidth: 80,
                     }}
                     disabled={cAccess.accessLevel === key}
-                    onClick={() => setClientAccessLevels(a => ({...a, [selectedClient]: {...a[selectedClient], accessLevel: key}}))}
+                    onClick={async () => {
+                    setClientAccessLevels(a => ({...a, [selectedClient]: {...a[selectedClient], accessLevel: key}}));
+                    // Save to Supabase
+                    if (supabase && selectedClient) {
+                      await supabase.from("profiles").update({ access_level: key }).eq("id", selectedClient);
+                    }
+                  }}
                   >
                     {cAccess.accessLevel === key ? "Current" : "Set"}
                   </button>
