@@ -509,6 +509,20 @@ function getStreak(history) {
   return streak;
 }
 
+function countMessagesThisWeek(messageList, clientId) {
+  // Counts messages the client actually sent in the last 7 days.
+  // Computed live from message rows so it can never drift out of sync
+  // the way a separately-stored counter can.
+  if (!messageList || !messageList.length) return 0;
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  return messageList.filter(m =>
+    m.from === "client" &&
+    m.created_at &&
+    new Date(m.created_at) >= weekAgo
+  ).length;
+}
+
 function getMonthAvg(history, habitId) {
   const vals=[]; const h=HABITS.find(x=>x.id===habitId);
   for(let d=0;d<30;d++){
@@ -1273,7 +1287,7 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
   }
 
   const msgLimit = access.msgLimit;
-  const msgsUsed = client.messagesThisWeek || 0;
+  const msgsUsed = countMessagesThisWeek(messages, clientId);
   const canSendMsg = access.canMessage && (msgLimit === null || msgsUsed < msgLimit);
 
   async function logHabit(id, val) {
@@ -1328,7 +1342,7 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
     all.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
     setMessages(all.map(m => ({
       id: m.id, from: m.sender_id === clientId ? "client" : "coach",
-      sender_id: m.sender_id, text: m.message,
+      sender_id: m.sender_id, text: m.message, created_at: m.created_at,
       time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
       date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
     })));
@@ -1450,6 +1464,7 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
         from:       m.sender_id === clientId ? "client" : "coach",
         sender_id:  m.sender_id,
         text:       m.message,
+        created_at: m.created_at,
         time:       new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
         date:       new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
       })));
@@ -1842,6 +1857,7 @@ function CoachApp({onLogout, supabase, coachProfile}) {
   const scGoals     = selectedClient ? (goals[selectedClient] || null) : null;
   const scRem       = selectedClient ? (reminders[selectedClient] || DEFAULT_REMINDERS) : null;
   const scStreak    = scData ? getStreak(scData) : 0;
+  const scWeeklyMsgs = selectedClient ? countMessagesThisWeek(messages[selectedClient], selectedClient) : 0;
 
   async function sendMsg() {
     if(!msgInput.trim()||!selectedClient||!coachProfile?.id) return;
@@ -1863,7 +1879,7 @@ function CoachApp({onLogout, supabase, coachProfile}) {
     all.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
     setMessages(prev => ({...prev, [selectedClient]: all.map(m => ({
       id: m.id, from: m.sender_id === coachProfile.id ? "coach" : "client",
-      sender_id: m.sender_id, text: m.message,
+      sender_id: m.sender_id, text: m.message, created_at: m.created_at,
       time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
       date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
     }))}));
@@ -1898,11 +1914,39 @@ function CoachApp({onLogout, supabase, coachProfile}) {
 
   // Load messages when coach selects a client
   // ── COACH: Load client data when a client is selected ────────────
+  // Privacy is enforced here, at the fetch layer, not just in what gets rendered.
+  // We load privacy_settings FIRST and only request the categories of data the
+  // client has actually opted to share. Anything not shared is never pulled
+  // into the coach's browser in the first place.
   useEffect(() => {
     if (!supabase || !selectedClient || !coachProfile?.id) return;
+    let cancelled = false;
 
-    // Load client habits
-    async function loadHabits() {
+    // Load client privacy settings
+    async function loadPrivacy() {
+      const { data } = await supabase
+        .from("privacy_settings").select("*")
+        .eq("user_id", selectedClient).maybeSingle();
+
+      const privacy = {
+        coachAccessEnabled: data?.coach_access_enabled ?? true,
+        shareHabits:        data?.share_habits        ?? true,
+        shareJournal:       data?.share_journal       ?? true,
+        shareFoodDiary:     data?.share_food_diary    ?? true,
+        shareMedications:   data?.share_medications   ?? true,
+        shareMood:          data?.share_mood          ?? true,
+      };
+      setClientPrivacy(prev => ({...prev, [selectedClient]: privacy}));
+      return privacy;
+    }
+
+    // Load client habits — skipped entirely if the client has coach access off
+    // or habit sharing off; mood is stripped separately since it has its own toggle.
+    async function loadHabits(privacy) {
+      if (!privacy.coachAccessEnabled || !privacy.shareHabits) {
+        setClientJournals(prev => ({...prev, ["__habits__"+selectedClient]: {}}));
+        return;
+      }
       const { data } = await supabase
         .from("habit_logs").select("*")
         .eq("user_id", selectedClient)
@@ -1914,16 +1958,21 @@ function CoachApp({onLogout, supabase, coachProfile}) {
           h[row.log_date] = {
             sleep: parseFloat(row.sleep)||0, water: parseInt(row.water)||0,
             exercise: parseInt(row.exercise)||0, nutrition: parseInt(row.nutrition)||0,
-            mood: parseInt(row.mood)||0,
+            mood: privacy.shareMood ? (parseInt(row.mood)||0) : undefined,
           };
         });
-        // Store in a dedicated state keyed by client ID
         setClientJournals(prev => ({...prev, ["__habits__"+selectedClient]: h}));
       }
     }
 
-    // Load client journal
-    async function loadJournal() {
+    // Load client journal — skipped entirely if coach access is off, or if none
+    // of journal/food-diary/medications are shared. Fields tied to a disabled
+    // toggle are stripped out row by row before they ever reach component state.
+    async function loadJournal(privacy) {
+      if (!privacy.coachAccessEnabled || (!privacy.shareJournal && !privacy.shareFoodDiary && !privacy.shareMedications)) {
+        setClientJournals(prev => ({...prev, [selectedClient]: {}}));
+        return;
+      }
       const { data } = await supabase
         .from("journal_entries").select("*")
         .eq("user_id", selectedClient);
@@ -1932,38 +1981,24 @@ function CoachApp({onLogout, supabase, coachProfile}) {
         const j = {};
         data.forEach(row => {
           j[row.entry_date] = {
-            intention: row.intention||"", reflection: row.reflection||"",
-            gratitude: [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""],
-            medications: row.medications||"", exercise: row.exercise||"",
-            meditation: row.meditation||"",
-            morning:   { food: row.morning_food||"",   water: row.morning_water||0 },
-            afternoon: { food: row.afternoon_food||"", water: row.afternoon_water||0 },
-            evening:   { food: row.evening_food||"",   water: row.evening_water||0 },
+            intention:   privacy.shareJournal ? (row.intention||"")  : "",
+            reflection:  privacy.shareJournal ? (row.reflection||"") : "",
+            gratitude:   privacy.shareJournal ? [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""] : ["","",""],
+            medications: privacy.shareMedications ? (row.medications||"") : "",
+            exercise:    row.exercise||"",
+            meditation:  row.meditation||"",
+            morning:   { food: privacy.shareFoodDiary ? (row.morning_food||"")   : "", water: privacy.shareFoodDiary ? (row.morning_water||0)   : 0 },
+            afternoon: { food: privacy.shareFoodDiary ? (row.afternoon_food||"") : "", water: privacy.shareFoodDiary ? (row.afternoon_water||0) : 0 },
+            evening:   { food: privacy.shareFoodDiary ? (row.evening_food||"")   : "", water: privacy.shareFoodDiary ? (row.evening_water||0)   : 0 },
           };
         });
         setClientJournals(prev => ({...prev, [selectedClient]: j}));
       }
     }
 
-    // Load client privacy settings
-    async function loadPrivacy() {
-      const { data } = await supabase
-        .from("privacy_settings").select("*")
-        .eq("user_id", selectedClient).maybeSingle();
-
-      if (data) {
-        setClientPrivacy(prev => ({...prev, [selectedClient]: {
-          coachAccessEnabled: data.coach_access_enabled ?? true,
-          shareHabits:        data.share_habits        ?? true,
-          shareJournal:       data.share_journal       ?? true,
-          shareFoodDiary:     data.share_food_diary    ?? true,
-          shareMedications:   data.share_medications   ?? true,
-          shareMood:          data.share_mood          ?? true,
-        }}));
-      }
-    }
-
-    // Load messages between coach and this client
+    // Load messages between coach and this client (messaging is its own consent
+    // channel — a client who messages their coach is knowingly sharing that,
+    // separate from the habit/journal privacy toggles)
     async function loadMessages() {
       const { data: toCoach }   = await supabase.from("messages").select("*").eq("sender_id", selectedClient).eq("receiver_id", coachProfile.id).order("created_at",{ascending:true});
       const { data: fromCoach } = await supabase.from("messages").select("*").eq("sender_id", coachProfile.id).eq("receiver_id", selectedClient).order("created_at",{ascending:true});
@@ -1976,18 +2011,23 @@ function CoachApp({onLogout, supabase, coachProfile}) {
         from: m.sender_id === coachProfile.id ? "coach" : "client",
         sender_id: m.sender_id,
         text: m.message,
+        created_at: m.created_at,
         time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
         date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
       }))}));
     }
 
-    loadHabits();
-    loadJournal();
-    loadPrivacy();
-    loadMessages();
+    async function loadAll() {
+      const privacy = await loadPrivacy();
+      if (cancelled) return;
+      await Promise.all([loadHabits(privacy), loadJournal(privacy)]);
+      if (cancelled) return;
+      await loadMessages();
+    }
+    loadAll();
 
     const interval = setInterval(loadMessages, 30000);
-    return () => clearInterval(interval);
+    return () => { cancelled = true; clearInterval(interval); };
   }, [selectedClient, supabase, coachProfile]);
 
     // Privacy helpers for selected client
@@ -2220,9 +2260,9 @@ function CoachApp({onLogout, supabase, coachProfile}) {
                     <div style={{fontSize:11,color:"var(--light)",marginBottom:4}}>Messages this week</div>
                     <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
                       {Array.from({length:5},(_,i)=>(
-                        <div key={i} style={{width:10,height:10,borderRadius:"50%",background:i < (cAccess.messagesThisWeek||0) ? "var(--terra)" : "rgba(0,0,0,.1)"}}/>
+                        <div key={i} style={{width:10,height:10,borderRadius:"50%",background:i < scWeeklyMsgs ? "var(--terra)" : "rgba(0,0,0,.1)"}}/>
                       ))}
-                      <span style={{fontSize:11,color:"var(--mid)",marginLeft:4}}>{cAccess.messagesThisWeek||0}/5</span>
+                      <span style={{fontSize:11,color:"var(--mid)",marginLeft:4}}>{scWeeklyMsgs}/5</span>
                     </div>
                   </div>
                 )}
@@ -2268,13 +2308,11 @@ function CoachApp({onLogout, supabase, coachProfile}) {
                 </div>
               ))}
 
-              {/* Reset weekly message count */}
+              {/* Weekly message count - computed live from the last 7 days of messages, so it
+                  rolls over on its own and never needs a manual reset */}
               {cAccess.accessLevel === "app_msg" && (
                 <div style={{marginTop:20,padding:"14px 16px",background:"rgba(61,125,107,.06)",borderRadius:12}}>
-                  <div style={{fontSize:13,color:"var(--mid)",marginBottom:8}}>Weekly message count: <strong>{cAccess.messagesThisWeek||0} / 5 used</strong></div>
-                  <button className="btn-sm-outline" onClick={() => setClientAccessLevels(a => ({...a,[selectedClient]:{...a[selectedClient],messagesThisWeek:0}}))}>
-                    Reset count (new week)
-                  </button>
+                  <div style={{fontSize:13,color:"var(--mid)"}}>Weekly message count: <strong>{scWeeklyMsgs} / 5 used</strong> <span style={{color:"var(--light)",fontWeight:400}}>(rolling 7-day count, updates automatically)</span></div>
                 </div>
               )}
             </div>
