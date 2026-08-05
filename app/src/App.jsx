@@ -2278,7 +2278,7 @@ function CoachApp({onLogout, supabase, coachProfile}) {
       <nav className="nav">
         <div className="nav-inner">
           <div className="nav-logo">serenity</div>
-          <div className="nav-tabs">{coachTabs.map(t=><button key={t.id} className={`nav-tab${tab===t.id?" active":""}`} onClick={()=>setTab(t.id)}>{t.label}</button>)}</div>
+          <div className="nav-tabs">{[{id:"clients",label:"Clients"},{id:"reports",label:"Reports"}].map(t=><button key={t.id} className={`nav-tab${tab===t.id?" active":""}`} onClick={()=>setTab(t.id)}>{t.label}</button>)}</div>
           <div className="nav-right">
             <span className="nav-badge">🌿 Coach</span>
             <button className="nav-logout" onClick={onLogout}>Sign out</button>
