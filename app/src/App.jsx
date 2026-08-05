@@ -1792,7 +1792,7 @@ function CoachApp({onLogout, supabase, coachProfile}) {
       }
 
       if (data) {
-        setClients(data.map(p => ({
+        const mapped = data.map(p => ({
           id: p.id,
           name: p.full_name || p.email || "New Client",
           avatar: (p.full_name || p.email || "C").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2),
@@ -1805,24 +1805,43 @@ function CoachApp({onLogout, supabase, coachProfile}) {
           graceEndDate: p.grace_end_date || null,
           subscriptionPlan: p.subscription_plan || null,
           messagesThisWeek: p.messages_this_week || 0,
-        })));
+        }));
+        setClients(mapped);
+        // Populate clientAccessLevels from profile data
+        const accessMap = {};
+        data.forEach(p => {
+          accessMap[p.id] = {
+            accessLevel: p.access_level || "active",
+            messagesThisWeek: p.messages_this_week || 0,
+            programEndDate: p.program_end_date || null,
+            graceEndDate: p.grace_end_date || null,
+            subscriptionPlan: p.subscription_plan || null,
+          };
+        });
+        setClientAccessLevels(accessMap);
       }
       setLoadingClients(false);
     }
     if (supabase) fetchClients();
   }, [supabase]);
 
+  const [clientData, setClientData] = useState({}); // { [clientId]: { habits, journal, privacy, messages } }
+  const [loadingClientData, setLoadingClientData] = useState(false);
+
   const weekDays = getWeekDays(7);
   const sc = clients.find(c=>c.id===selectedClient);
-  // Get client habit data loaded from Supabase
-  const scData = selectedClient ? (clientJournals["__habits__"+selectedClient] || null) : null;
-  const scStreak = scData ? getStreak(scData) : 0;
-  const scNotes = selectedClient ? (coachNotes[selectedClient]||[]) : [];
-  const scGoals = selectedClient ? goals[selectedClient] : null;
-  const scRem = selectedClient ? reminders[selectedClient] : null;
-  // Use live clients list
   const CLIENTS = clients;
-  const scMessages = selectedClient ? (messages[selectedClient]||[]) : [];
+
+  // Safe accessors - never crash if data not loaded yet
+  const scRawData   = selectedClient ? (clientData[selectedClient] || {}) : {};
+  const scData      = scRawData.habits      || null;
+  const scJournal   = scRawData.journal     || {};
+  const scPrivacy   = scRawData.privacy     || DEFAULT_PRIVACY;
+  const scMessages  = scRawData.messages    || [];
+  const scNotes     = selectedClient ? (coachNotes[selectedClient] || []) : [];
+  const scGoals     = selectedClient ? (goals[selectedClient] || null) : null;
+  const scRem       = selectedClient ? (reminders[selectedClient] || DEFAULT_REMINDERS) : null;
+  const scStreak    = scData ? getStreak(scData) : 0;
 
   async function sendMsg() {
     if(!msgInput.trim()||!selectedClient||!coachProfile?.id) return;
@@ -1972,7 +1991,7 @@ function CoachApp({onLogout, supabase, coachProfile}) {
   }, [selectedClient, supabase, coachProfile]);
 
     // Privacy helpers for selected client
-  const scPrivacy = selectedClient ? (clientPrivacy[selectedClient] || initPrivacy[selectedClient] || DEFAULT_PRIVACY) : DEFAULT_PRIVACY;
+  const scPrivacy = scRawData.privacy || clientPrivacy[selectedClient] || DEFAULT_PRIVACY;
   const scLocked = !scPrivacy.coachAccessEnabled;
 
   // Reusable locked placeholder
@@ -1987,12 +2006,23 @@ function CoachApp({onLogout, supabase, coachProfile}) {
     </div>
   );
 
+  const clientTabs = [
+    {id:"overview",label:"Overview"},
+    {id:"access",label:"🔑 Access"},
+    {id:"journal",label:"📓 Journal"},
+    {id:"insights",label:"✨ Insights"},
+    {id:"goals",label:"Goals"},
+    {id:"reminders",label:"Reminders"},
+    {id:"chat",label:"Messages"},
+    {id:"notes",label:"Notes"},
+  ];
+
   if(selectedClient && sc) return (
     <>
       <nav className="nav">
         <div className="nav-inner">
           <div className="nav-logo">serenity</div>
-          <div className="nav-tabs">{clientTabs.map(t=><button key={t.id} className={`nav-tab${clientTab===t.id?" active":""}`} onClick={()=>setClientTab(t.id)}>{t.label}</button>)}</div>
+          <div className="nav-tabs" style={{overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none"}}>{clientTabs.map(t=><button key={t.id} className={`nav-tab${clientTab===t.id?" active":""}`} onClick={()=>setClientTab(t.id)}>{t.label}</button>)}</div>
           <div className="nav-right">
             <span className="nav-badge">🌿 Coach</span>
             <button className="nav-logout" onClick={onLogout}>Sign out</button>
