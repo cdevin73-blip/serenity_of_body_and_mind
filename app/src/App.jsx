@@ -1991,7 +1991,6 @@ function CoachApp({onLogout, supabase, coachProfile}) {
   }, [selectedClient, supabase, coachProfile]);
 
     // Privacy helpers for selected client
-  const scPrivacy = scRawData.privacy || clientPrivacy[selectedClient] || DEFAULT_PRIVACY;
   const scLocked = !scPrivacy.coachAccessEnabled;
 
   // Reusable locked placeholder
