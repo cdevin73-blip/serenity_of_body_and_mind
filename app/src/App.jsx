@@ -1271,6 +1271,7 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
   const [showDownload, setShowDownload] = useState(false);
   const [privacy, setPrivacy] = useState(DEFAULT_PRIVACY);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const { toast, showToast, clearToast } = useToast();
   const chatRef = useRef(null);
   const MSG_LIMIT = 500;
   const isViewOnly = access.viewOnly || false;
@@ -1309,22 +1310,36 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
       const { error } = await supabaseClient
         .from("habit_logs")
         .upsert(upsertData, { onConflict: "user_id,log_date" });
-      if (error) console.error("Habit save error:", error);
+      if (error) {
+        console.error("Habit save error:", error);
+        showToast("That habit didn't save — check your connection and try again.");
+      }
     }
   }
 
   async function sendMsg() {
     if(!msgInput.trim() || !canSendMsg || msgInput.length > MSG_LIMIT) return;
     const text = msgInput.trim();
-    setMsgInput(""); setMsgChars(0);
 
     if (!supabaseClient || !clientId || clientId.length <= 10) return;
 
     // Get coach ID
-    const { data: coaches } = await supabaseClient
+    const { data: coaches, error: coachLookupError } = await supabaseClient
       .from("profiles").select("id").eq("role","coach").limit(1);
 
-    if (!coaches || coaches.length === 0) return;
+    if (coachLookupError) {
+      console.error("Coach lookup error:", coachLookupError);
+      showToast("Couldn't reach your coach right now. Your message wasn't sent — try again in a moment.");
+      return;
+    }
+    if (!coaches || coaches.length === 0) {
+      showToast("No coach is set up to receive messages yet. Your message wasn't sent.");
+      return;
+    }
+
+    // Only clear the input once we know the send is actually going through,
+    // so a failed send never wipes out what the client typed.
+    setMsgInput(""); setMsgChars(0);
 
     // Save to Supabase then reload
     const { error } = await supabaseClient.from("messages").insert({
@@ -1333,7 +1348,12 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
       message: text,
     });
 
-    if (error) { console.error("Message send error:", error); return; }
+    if (error) {
+      console.error("Message send error:", error);
+      showToast("Your message didn't send. It's still in the box below — try again.");
+      setMsgInput(text); setMsgChars(text.length);
+      return;
+    }
 
     // Reload messages to show saved version
     const { data: sent }     = await supabaseClient.from("messages").select("*").eq("sender_id", clientId).order("created_at",{ascending:true});
@@ -1493,6 +1513,7 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
 
   return (
     <>
+      <Toast toast={toast} onClose={clearToast} />
       {showDownload && (
         <DownloadModal
           client={client}
@@ -1718,7 +1739,10 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
                 share_medications:    newPrivacy.shareMedications,
                 share_mood:           newPrivacy.shareMood,
               }, { onConflict: "user_id" });
-            if (error) console.error("Privacy save error:", error);
+            if (error) {
+              console.error("Privacy save error:", error);
+              showToast("Your privacy settings didn't save — please try again.");
+            }
           }
         }} />
         </>}
@@ -1754,7 +1778,10 @@ function ClientApp({clientId, onLogout, supabaseProfile, supabase: supabaseClien
                     evening_food:    entry.evening?.food || "",
                     evening_water:   entry.evening?.water || 0,
                   }, { onConflict: "user_id,entry_date" });
-                if (error) console.error("Journal save error:", error);
+                if (error) {
+                  console.error("Journal save error:", error);
+                  showToast("Your journal entry didn't save — please try again.");
+                }
               }
             }}
             readOnly={false}
@@ -1788,6 +1815,7 @@ function CoachApp({onLogout, supabase, coachProfile}) {
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [reportPeriod, setReportPeriod] = useState("weekly");
   const [showCoachDownload, setShowCoachDownload] = useState(false);
+  const { toast, showToast, clearToast } = useToast();
   const chatRef = useRef(null);
 
   // Load real clients from Supabase
@@ -1802,6 +1830,7 @@ function CoachApp({onLogout, supabase, coachProfile}) {
 
       if (error) {
         console.error("Error fetching clients:", error);
+        showToast("Couldn't load your client list — check your connection and refresh.");
         setLoadingClients(false);
         return;
       }
@@ -1862,7 +1891,6 @@ function CoachApp({onLogout, supabase, coachProfile}) {
   async function sendMsg() {
     if(!msgInput.trim()||!selectedClient||!coachProfile?.id) return;
     const text = msgInput.trim();
-    setMsgInput("");
 
     const { error } = await supabase.from("messages").insert({
       sender_id: coachProfile.id,
@@ -1870,7 +1898,13 @@ function CoachApp({onLogout, supabase, coachProfile}) {
       message: text,
     });
 
-    if (error) { console.error("Coach send error:", error); return; }
+    if (error) {
+      console.error("Coach send error:", error);
+      showToast("Your message didn't send. It's still in the box below — try again.");
+      return;
+    }
+
+    setMsgInput("");
 
     // Reload after save
     const { data: toCoach }   = await supabase.from("messages").select("*").eq("sender_id", selectedClient).eq("receiver_id", coachProfile.id).order("created_at",{ascending:true});
@@ -2296,11 +2330,17 @@ function CoachApp({onLogout, supabase, coachProfile}) {
                     }}
                     disabled={cAccess.accessLevel === key}
                     onClick={async () => {
-                    setClientAccessLevels(a => ({...a, [selectedClient]: {...a[selectedClient], accessLevel: key}}));
-                    // Save to Supabase
+                    // Save to Supabase first — only update the UI once we know it stuck,
+                    // so the "Current" badge never lies about what's actually saved.
                     if (supabase && selectedClient) {
-                      await supabase.from("profiles").update({ access_level: key }).eq("id", selectedClient);
+                      const { error } = await supabase.from("profiles").update({ access_level: key }).eq("id", selectedClient);
+                      if (error) {
+                        console.error("Access level update error:", error);
+                        showToast("Couldn't update this client's access level — please try again.");
+                        return;
+                      }
                     }
+                    setClientAccessLevels(a => ({...a, [selectedClient]: {...a[selectedClient], accessLevel: key}}));
                   }}
                   >
                     {cAccess.accessLevel === key ? "Current" : "Set"}
@@ -2443,6 +2483,40 @@ function CoachApp({onLogout, supabase, coachProfile}) {
 
 // ─── AUTH LOGIN SCREEN ───────────────────────────────────────────────────────
 
+// ─── TOAST ────────────────────────────────────────────────────────────────
+// A small, dismissible banner for surfacing errors (and confirmations) to
+// the person actually using the app, instead of console.error alone, which
+// nobody but a developer with devtools open will ever see.
+function Toast({ toast, onClose }) {
+  if (!toast) return null;
+  const isError = toast.type === "error";
+  return (
+    <div style={{
+      position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
+      zIndex: 9999, maxWidth: "90vw", minWidth: 260,
+      background: isError ? "#5c2b2b" : "var(--sage, #3d7d6b)",
+      color: "#fff", padding: "12px 16px", borderRadius: 12,
+      boxShadow: "0 6px 20px rgba(0,0,0,.25)",
+      display: "flex", alignItems: "center", gap: 12, fontSize: 13.5,
+    }}>
+      <span style={{flex: 1}}>{isError ? "⚠️ " : "✓ "}{toast.message}</span>
+      <button onClick={onClose} style={{
+        background: "transparent", border: "none", color: "#fff",
+        opacity: 0.8, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0,
+      }}>×</button>
+    </div>
+  );
+}
+
+function useToast() {
+  const [toast, setToast] = useState(null);
+  function showToast(message, type = "error") {
+    setToast({ message, type });
+    setTimeout(() => setToast(t => (t && t.message === message ? null : t)), type === "error" ? 6000 : 3500);
+  }
+  return { toast, showToast, clearToast: () => setToast(null) };
+}
+
 function AuthScreen({ onAuth }) {
   const [mode, setMode] = useState("login"); // login | signup | reset
   const [email, setEmail] = useState("");
@@ -2578,6 +2652,7 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("loading"); // loading | auth | onboarding | client | coach
+  const { toast, showToast, clearToast } = useToast();
 
   useEffect(() => {
     // Check for existing session on load
@@ -2675,15 +2750,17 @@ export default function App() {
 
     if (profileError) {
       console.error("Profile save error:", profileError);
+      showToast("Some of your info didn't save — you can update it later in your profile.");
     }
 
     // Save goals
     if (form.goal) {
-      await supabase.from("goals").upsert({
+      const { error: goalError } = await supabase.from("goals").upsert({
         user_id: session.user.id,
         primary_goal: form.goal,
         why: form.motivation || "",
       }, { onConflict: "user_id" });
+      if (goalError) console.error("Goal save error:", goalError);
     }
 
     // Force set view to client even if profile reload has issues
@@ -2722,6 +2799,7 @@ export default function App() {
   return (
     <>
       <style>{CSS}</style>
+      <Toast toast={toast} onClose={clearToast} />
       <div className="app">
         {view === "auth" && <AuthScreen onAuth={(user) => loadProfile(user)} />}
         {view === "onboarding" && (
