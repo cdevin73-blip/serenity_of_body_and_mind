@@ -1878,10 +1878,10 @@ function CoachApp({onLogout, supabase, coachProfile}) {
 
   // Safe accessors - never crash if data not loaded yet
   const scRawData   = selectedClient ? (clientData[selectedClient] || {}) : {};
-  const scData      = scRawData.habits      || null;
+  const scData      = selectedClient ? (clientJournals["__habits__"+selectedClient] || null) : null;
   const scJournal   = scRawData.journal     || {};
   const scPrivacy   = scRawData.privacy     || DEFAULT_PRIVACY;
-  const scMessages  = scRawData.messages    || [];
+  const scMessages  = messages[selectedClient] || [];
   const scNotes     = selectedClient ? (coachNotes[selectedClient] || []) : [];
   const scGoals     = selectedClient ? (goals[selectedClient] || null) : null;
   const scRem       = selectedClient ? (reminders[selectedClient] || DEFAULT_REMINDERS) : null;
