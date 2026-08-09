@@ -1880,7 +1880,7 @@ function CoachApp({onLogout, supabase, coachProfile}) {
   const scRawData   = selectedClient ? (clientData[selectedClient] || {}) : {};
   const scData      = selectedClient ? (clientJournals["__habits__"+selectedClient] || null) : null;
   const scJournal   = scRawData.journal     || {};
-  const scPrivacy   = scRawData.privacy     || DEFAULT_PRIVACY;
+  const scPrivacy   = selectedClient ? (clientPrivacy[selectedClient] || DEFAULT_PRIVACY) : DEFAULT_PRIVACY;
   const scMessages  = messages[selectedClient] || [];
   const scNotes     = selectedClient ? (coachNotes[selectedClient] || []) : [];
   const scGoals     = selectedClient ? (goals[selectedClient] || null) : null;
