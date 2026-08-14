@@ -1,0 +1,748 @@
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { supabase } from "../../lib/supabaseClient";
+import { HABITS, ACCESS_LEVELS, DEFAULT_PRIVACY, DEFAULT_REMINDERS } from "../../lib/constants";
+import { today, todayKey, dayNames, monthNames, getWeekDays, getCompletion, getStreak } from "../../lib/dates";
+import { getDaysRemaining, countMessagesThisWeek } from "../../lib/access";
+import { fetchInsights } from "../../lib/insights";
+import { getAggregate } from "../../lib/report";
+import { Toast, useToast } from "../../components/Toast";
+import { Toggle } from "../../components/Toggle";
+import { DownloadModal } from "../../components/DownloadModal";
+import { JournalView } from "../../components/JournalView";
+import { QuizResults } from "../../components/Quiz/QuizResults";
+import { QUIZZES, CHART_COLORS } from "../../lib/quizzes";
+
+export function CoachApp() {
+  const { profile: coachProfile, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams();
+
+  const tab = location.pathname === "/coach/reports" ? "reports" : "clients";
+  const selectedClient = params.clientId || null;
+  const clientTab = params.clientTab || "overview";
+  const setTab = (id) => navigate(id === "reports" ? "/coach/reports" : "/coach");
+  const setSelectedClient = (id) => navigate(id ? `/coach/clients/${id}/overview` : "/coach");
+  const setClientTab = (id) => navigate(`/coach/clients/${selectedClient}/${id}`);
+
+  async function onLogout() {
+    await logout();
+    navigate("/auth");
+  }
+
+  const [clients, setClients] = useState([]);
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [allClientData] = useState({});
+  const [coachNotes, setCoachNotes] = useState({});
+  const [clientAccessLevels, setClientAccessLevels] = useState({});
+  const [clientJournals, setClientJournals] = useState({});
+  const [clientPrivacy, setClientPrivacy] = useState({});
+  const [clientQuizzes, setClientQuizzes] = useState({});
+  const [quizBadges, setQuizBadges] = useState({});
+  const [messages, setMessages] = useState({});
+  const [msgInput, setMsgInput] = useState("");
+  const [goals, setGoals] = useState({});
+  const [reminders, setReminders] = useState({});
+  const [editGoals, setEditGoals] = useState(false);
+  const [newNote, setNewNote] = useState("");
+  const [insights, setInsights] = useState({});
+  const [loadingInsights, setLoadingInsights] = useState(false);
+  const [reportPeriod, setReportPeriod] = useState("weekly");
+  const [showCoachDownload, setShowCoachDownload] = useState(false);
+  const { toast, showToast, clearToast } = useToast();
+  const chatRef = useRef(null);
+
+  useEffect(() => {
+    async function fetchClients() {
+      setLoadingClients(true);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("role", "client")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching clients:", error);
+        showToast("Couldn't load your client list — check your connection and refresh.");
+        setLoadingClients(false);
+        return;
+      }
+
+      if (data) {
+        const mapped = data.map(p => ({
+          id: p.id,
+          name: p.full_name || p.email || "New Client",
+          avatar: (p.full_name || p.email || "C").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2),
+          joined: p.joined_date ? new Date(p.joined_date).toLocaleDateString("en-US",{month:"short",year:"numeric"}) : "Recent",
+          goal: p.goal || "Getting started",
+          email: p.email,
+          program: p.program || null,
+          programEndDate: p.program_end_date || null,
+          accessLevel: p.access_level || "active",
+          graceEndDate: p.grace_end_date || null,
+          subscriptionPlan: p.subscription_plan || null,
+          messagesThisWeek: p.messages_this_week || 0,
+        }));
+        setClients(mapped);
+        const accessMap = {};
+        data.forEach(p => {
+          accessMap[p.id] = {
+            accessLevel: p.access_level || "active",
+            messagesThisWeek: p.messages_this_week || 0,
+            programEndDate: p.program_end_date || null,
+            graceEndDate: p.grace_end_date || null,
+            subscriptionPlan: p.subscription_plan || null,
+          };
+        });
+        setClientAccessLevels(accessMap);
+      }
+
+      const { data: quizzes } = await supabase
+        .from("quiz_results")
+        .select("user_id, quiz_type, primary_style");
+      if (quizzes) {
+        const badges = {};
+        quizzes.forEach(row => {
+          badges[row.user_id] = { ...(badges[row.user_id] || {}), [row.quiz_type]: row.primary_style };
+        });
+        setQuizBadges(badges);
+      }
+
+      setLoadingClients(false);
+    }
+    fetchClients();
+  }, []);
+
+  const weekDays = getWeekDays(7);
+  const sc = clients.find(c=>c.id===selectedClient);
+  const CLIENTS = clients;
+
+  const scData      = selectedClient ? (clientJournals["__habits__"+selectedClient] || null) : null;
+  const scPrivacy   = selectedClient ? (clientPrivacy[selectedClient] || DEFAULT_PRIVACY) : DEFAULT_PRIVACY;
+  const scMessages  = messages[selectedClient] || [];
+  const scNotes     = selectedClient ? (coachNotes[selectedClient] || []) : [];
+  const scGoals     = selectedClient ? (goals[selectedClient] || null) : null;
+  const scRem       = selectedClient ? (reminders[selectedClient] || DEFAULT_REMINDERS) : null;
+  const scStreak    = scData ? getStreak(scData) : 0;
+  const scWeeklyMsgs = selectedClient ? countMessagesThisWeek(messages[selectedClient], selectedClient) : 0;
+  const scQuizzes   = selectedClient ? (clientQuizzes[selectedClient] || {}) : {};
+
+  async function sendMsg() {
+    if(!msgInput.trim()||!selectedClient||!coachProfile?.id) return;
+    const text = msgInput.trim();
+
+    const { error } = await supabase.from("messages").insert({
+      sender_id: coachProfile.id,
+      receiver_id: selectedClient,
+      message: text,
+    });
+
+    if (error) {
+      console.error("Coach send error:", error);
+      showToast("Your message didn't send. It's still in the box below — try again.");
+      return;
+    }
+
+    setMsgInput("");
+
+    const { data: toCoach }   = await supabase.from("messages").select("*").eq("sender_id", selectedClient).eq("receiver_id", coachProfile.id).order("created_at",{ascending:true});
+    const { data: fromCoach } = await supabase.from("messages").select("*").eq("sender_id", coachProfile.id).eq("receiver_id", selectedClient).order("created_at",{ascending:true});
+    const all = [...(toCoach||[]), ...(fromCoach||[])];
+    all.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    setMessages(prev => ({...prev, [selectedClient]: all.map(m => ({
+      id: m.id, from: m.sender_id === coachProfile.id ? "coach" : "client",
+      sender_id: m.sender_id, text: m.message, created_at: m.created_at,
+      time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
+      date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
+    }))}));
+    setTimeout(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},50);
+  }
+
+  function addNote() {
+    if(!newNote.trim()||!selectedClient) return;
+    const note={text:newNote.trim(),date:new Date().toLocaleDateString()};
+    setCoachNotes(n=>({...n,[selectedClient]:[note,...(n[selectedClient]||[])]}));
+    setNewNote("");
+  }
+
+  async function loadClientInsights(cid) {
+    setLoadingInsights(true);
+    const client=CLIENTS.find(c=>c.id===cid);
+    try {
+      const ins=await fetchInsights(client.name,allClientData[cid],goals[cid]);
+      setInsights(i=>({...i,[cid]:ins}));
+    } catch {
+      setInsights(i=>({...i,[cid]:[{type:"tip",emoji:"💡",label:"Keep Going",text:"This client is building consistent habits. Check in to provide personalized encouragement."}]}));
+    }
+    setLoadingInsights(false);
+  }
+
+  function updateGoal(field, val) {
+    setGoals(g=>({...g,[selectedClient]:{...g[selectedClient],[field]:val}}));
+  }
+  function updateReminder(field, val) {
+    setReminders(r=>({...r,[selectedClient]:{...r[selectedClient],[field]:val}}));
+  }
+
+  // ── COACH: Load client data when a client is selected ────────────
+  // Privacy is enforced here, at the fetch layer, not just in what gets rendered.
+  useEffect(() => {
+    if (!supabase || !selectedClient || !coachProfile?.id) return;
+    let cancelled = false;
+
+    async function loadPrivacy() {
+      const { data } = await supabase
+        .from("privacy_settings").select("*")
+        .eq("user_id", selectedClient).maybeSingle();
+
+      const privacy = {
+        coachAccessEnabled: data?.coach_access_enabled ?? true,
+        shareHabits:        data?.share_habits        ?? true,
+        shareJournal:       data?.share_journal       ?? true,
+        shareFoodDiary:     data?.share_food_diary    ?? true,
+        shareMedications:   data?.share_medications   ?? true,
+        shareMood:          data?.share_mood          ?? true,
+      };
+      setClientPrivacy(prev => ({...prev, [selectedClient]: privacy}));
+      return privacy;
+    }
+
+    async function loadHabits(privacy) {
+      if (!privacy.coachAccessEnabled || !privacy.shareHabits) {
+        setClientJournals(prev => ({...prev, ["__habits__"+selectedClient]: {}}));
+        return;
+      }
+      const { data } = await supabase
+        .from("habit_logs").select("*")
+        .eq("user_id", selectedClient)
+        .order("log_date", { ascending: true });
+
+      if (data) {
+        const h = {};
+        data.forEach(row => {
+          h[row.log_date] = {
+            sleep: parseFloat(row.sleep)||0, water: parseInt(row.water)||0,
+            exercise: parseInt(row.exercise)||0, nutrition: parseInt(row.nutrition)||0,
+            mood: privacy.shareMood ? (parseInt(row.mood)||0) : undefined,
+          };
+        });
+        setClientJournals(prev => ({...prev, ["__habits__"+selectedClient]: h}));
+      }
+    }
+
+    async function loadJournal(privacy) {
+      if (!privacy.coachAccessEnabled || (!privacy.shareJournal && !privacy.shareFoodDiary && !privacy.shareMedications)) {
+        setClientJournals(prev => ({...prev, [selectedClient]: {}}));
+        return;
+      }
+      const { data } = await supabase
+        .from("journal_entries").select("*")
+        .eq("user_id", selectedClient);
+
+      if (data) {
+        const j = {};
+        data.forEach(row => {
+          j[row.entry_date] = {
+            intention:   privacy.shareJournal ? (row.intention||"")  : "",
+            reflection:  privacy.shareJournal ? (row.reflection||"") : "",
+            gratitude:   privacy.shareJournal ? [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""] : ["","",""],
+            medications: privacy.shareMedications ? (row.medications||"") : "",
+            exercise:    row.exercise||"",
+            meditation:  row.meditation||"",
+            morning:   { food: privacy.shareFoodDiary ? (row.morning_food||"")   : "", water: privacy.shareFoodDiary ? (row.morning_water||0)   : 0 },
+            afternoon: { food: privacy.shareFoodDiary ? (row.afternoon_food||"") : "", water: privacy.shareFoodDiary ? (row.afternoon_water||0) : 0 },
+            evening:   { food: privacy.shareFoodDiary ? (row.evening_food||"")   : "", water: privacy.shareFoodDiary ? (row.evening_water||0)   : 0 },
+          };
+        });
+        setClientJournals(prev => ({...prev, [selectedClient]: j}));
+      }
+    }
+
+    async function loadMessages() {
+      const { data: toCoach }   = await supabase.from("messages").select("*").eq("sender_id", selectedClient).eq("receiver_id", coachProfile.id).order("created_at",{ascending:true});
+      const { data: fromCoach } = await supabase.from("messages").select("*").eq("sender_id", coachProfile.id).eq("receiver_id", selectedClient).order("created_at",{ascending:true});
+
+      const all = [...(toCoach||[]), ...(fromCoach||[])];
+      all.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+
+      setMessages(prev => ({...prev, [selectedClient]: all.map(m => ({
+        id: m.id,
+        from: m.sender_id === coachProfile.id ? "coach" : "client",
+        sender_id: m.sender_id,
+        text: m.message,
+        created_at: m.created_at,
+        time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
+        date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
+      }))}));
+    }
+
+    async function loadQuizzes() {
+      const { data } = await supabase
+        .from("quiz_results")
+        .select("quiz_type, primary_style, scores")
+        .eq("user_id", selectedClient);
+      const q = {};
+      (data || []).forEach(row => { q[row.quiz_type] = { primaryStyle: row.primary_style, scores: row.scores }; });
+      setClientQuizzes(prev => ({ ...prev, [selectedClient]: q }));
+    }
+
+    async function loadAll() {
+      const privacy = await loadPrivacy();
+      if (cancelled) return;
+      await Promise.all([loadHabits(privacy), loadJournal(privacy), loadQuizzes()]);
+      if (cancelled) return;
+      await loadMessages();
+    }
+    loadAll();
+
+    const interval = setInterval(loadMessages, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [selectedClient, coachProfile]);
+
+  useEffect(()=>{
+    if(clientTab==="chat" && chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+  }, [scMessages, clientTab]);
+
+  const scLocked = !scPrivacy.coachAccessEnabled;
+
+  const LockedSection = ({label}) => (
+    <div className="coach-locked">
+      <div className="coach-locked-icon">🔒</div>
+      <div className="coach-locked-title">{label} — hidden by client</div>
+      <div className="coach-locked-sub">
+        {sc?.name?.split(" ")[0]} has turned off coach visibility for this section.
+        This is their right — you can still support them in sessions.
+      </div>
+    </div>
+  );
+
+  const clientTabs = [
+    {id:"overview",label:"Overview"},
+    {id:"access",label:"🔑 Access"},
+    {id:"journal",label:"📓 Journal"},
+    {id:"insights",label:"✨ Insights"},
+    {id:"goals",label:"Goals"},
+    {id:"quizzes",label:"🧠 Quizzes"},
+    {id:"reminders",label:"Reminders"},
+    {id:"chat",label:"Messages"},
+    {id:"notes",label:"Notes"},
+  ];
+
+  if(selectedClient && sc) return (
+    <>
+      <Toast toast={toast} onClose={clearToast} />
+      <nav className="nav">
+        <div className="nav-inner">
+          <div className="nav-logo">serenity</div>
+          <div className="nav-tabs" style={{overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none"}}>{clientTabs.map(t=><button key={t.id} className={`nav-tab${clientTab===t.id?" active":""}`} onClick={()=>setClientTab(t.id)}>{t.label}</button>)}</div>
+          <div className="nav-right">
+            <span className="nav-badge">🌿 Coach</span>
+            <button className="nav-logout" onClick={onLogout}>Sign out</button>
+          </div>
+        </div>
+      </nav>
+      <div className="main">
+        <button className="back-btn" onClick={()=>setSelectedClient(null)}>← All Clients</button>
+
+        <div className="card" style={{display:"flex",alignItems:"center",gap:20,marginBottom:20}}>
+          <div className="cl-avatar" style={{width:60,height:60,fontSize:20}}>{sc.avatar}</div>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:26,fontWeight:400}}>{sc.name}</div>
+            <div style={{fontSize:13,color:"var(--light)",marginTop:3}}>{sc.goal}</div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:5,flexWrap:"wrap"}}>
+              <span style={{fontSize:11,color:"var(--sage)",fontWeight:600}}>Member since {sc.joined} · 🔥 {scStreak} day streak</span>
+              {scLocked && <span style={{fontSize:11,background:"rgba(232,168,56,.15)",color:"#C07A10",padding:"2px 8px",borderRadius:20,fontWeight:600}}>🔒 Visibility off</span>}
+              {!scLocked && !scPrivacy.shareHabits && <span style={{fontSize:11,background:"rgba(91,164,207,.12)",color:"#2A7AAF",padding:"2px 8px",borderRadius:20}}>📊 Habits hidden</span>}
+              {!scLocked && !scPrivacy.shareJournal && <span style={{fontSize:11,background:"rgba(91,164,207,.12)",color:"#2A7AAF",padding:"2px 8px",borderRadius:20}}>📓 Journal hidden</span>}
+            </div>
+          </div>
+          <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
+            <div>
+              <div style={{fontSize:24,fontWeight:700,color:"var(--terra)"}}>{getCompletion(scData?.[todayKey])}%</div>
+              <div style={{fontSize:11,color:"var(--light)"}}>today</div>
+            </div>
+            <button className="btn-download" onClick={()=>setShowCoachDownload(true)}>📥 Export data</button>
+          </div>
+        </div>
+        {showCoachDownload && (
+          <DownloadModal
+            client={sc}
+            history={scData||{}}
+            journalData={clientJournals[selectedClient]||{}}
+            onClose={()=>setShowCoachDownload(false)}
+          />
+        )}
+
+        {clientTab==="overview" && <>
+          <div className="card" style={{marginBottom:18}}>
+            <div className="section-label">7-Day Habit Progress</div>
+            {HABITS.map(h=>(
+              <div className="week-row" key={h.id}>
+                <div className="week-habit-label">{h.icon} {h.label}</div>
+                <div className="week-dots">
+                  {weekDays.map(({key,label})=>{
+                    const val=scData?.[key]?.[h.id]||0;
+                    const pct=Math.min(100,Math.round((val/h.target)*100));
+                    return <div key={key} className="wdot" style={{background:pct>=80?h.color:pct>=40?h.color+"99":"rgba(61,125,107,.08)",color:pct>=40?"#fff":"var(--light)",fontSize:9}}>{pct}%</div>;
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>}
+
+        {clientTab==="insights" && <>
+          <div className="section-label" style={{marginBottom:18}}>AI-Powered Coaching Insights for {sc.name}</div>
+          {loadingInsights && <div className="ai-loading"><div className="dot-pulse"><span/><span/><span/></div>Analyzing…</div>}
+          {insights[selectedClient] && insights[selectedClient].map((ins,i)=>(
+            <div key={i} className={`insight-card ${ins.type}`}>
+              <div className="insight-type">{ins.emoji} {ins.label}</div>
+              <div className="insight-text">{ins.text}</div>
+            </div>
+          ))}
+          {!insights[selectedClient] && !loadingInsights && (
+            <button className="btn-sm" onClick={()=>loadClientInsights(selectedClient)}>Generate Insights ✨</button>
+          )}
+          {insights[selectedClient] && !loadingInsights && (
+            <button className="btn-sm-outline" style={{marginTop:8}} onClick={()=>loadClientInsights(selectedClient)}>Refresh ↺</button>
+          )}
+        </>}
+
+        {clientTab==="goals" && <>
+          <div className="card">
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+              <div className="section-label" style={{margin:0}}>Client Goals</div>
+              <button className="btn-sm-outline" onClick={()=>setEditGoals(e=>!e)}>{editGoals?"Save":"Edit"}</button>
+            </div>
+            {editGoals ? <>
+              {[{f:"primaryGoal",l:"Primary Goal"},{f:"weeklyCheckIn",l:"Weekly Check-In"},{f:"sleepTarget",l:"Sleep Target (hrs)"},{f:"waterTarget",l:"Water Target (glasses)"},{f:"exerciseTarget",l:"Exercise Target (min)"}].map(({f,l})=>(
+                <div className="goal-edit-row" key={f}>
+                  <div className="goal-edit-label">{l}</div>
+                  <input className="goal-input-sm" value={scGoals?.[f]||""} onChange={e=>updateGoal(f,e.target.value)}/>
+                </div>
+              ))}
+              <div className="goal-edit-row" style={{flexDirection:"column",alignItems:"flex-start",gap:6}}>
+                <div className="goal-edit-label">Coach Notes</div>
+                <textarea className="textarea" style={{width:"100%"}} value={scGoals?.notes||""} onChange={e=>updateGoal("notes",e.target.value)}/>
+              </div>
+            </> : <>
+              {[{icon:"🎯",label:"Primary Goal",f:"primaryGoal"},{icon:"📅",label:"Check-In",f:"weeklyCheckIn"},{icon:"🌙",label:"Sleep Target",f:"sleepTarget",suf:"hrs"},{icon:"💧",label:"Water Target",f:"waterTarget",suf:"glasses"},{icon:"🏃",label:"Exercise Target",f:"exerciseTarget",suf:"min"}].map(({icon,label,f,suf})=>(
+                <div className="goal-item" key={f}>
+                  <span className="goal-icon">{icon}</span>
+                  <div><div className="goal-label">{label}</div><div className="goal-val">{scGoals?.[f]||"—"}{suf?" "+suf:""}</div></div>
+                </div>
+              ))}
+            </>}
+          </div>
+        </>}
+
+        {clientTab==="quizzes" && <>
+          <div className="section-label" style={{marginBottom:18}}>{sc.name.split(" ")[0]}'s Quiz Results</div>
+          {Object.values(QUIZZES).map(qd => {
+            const saved = scQuizzes[qd.quizType];
+            return (
+              <div className="card" style={{marginBottom:16}} key={qd.quizType}>
+                {saved ? (
+                  <QuizResults
+                    quizDef={qd}
+                    scores={saved.scores}
+                    primaryStyle={saved.primaryStyle}
+                    totalQuestions={qd.questions.length}
+                    readOnly
+                  />
+                ) : (
+                  <div className="empty">{sc.name.split(" ")[0]} hasn't taken the {qd.title} quiz yet.</div>
+                )}
+              </div>
+            );
+          })}
+        </>}
+
+        {clientTab==="reminders" && scRem && <>
+          <div className="card">
+            <div className="section-label">Reminder Settings for {sc.name}</div>
+            <div className="toggle-row">
+              <div><div className="toggle-label">Email Reminders</div><div className="toggle-sub">{sc.email}</div></div>
+              <Toggle checked={scRem.email} onChange={v=>updateReminder("email",v)}/>
+            </div>
+            <div className="toggle-row">
+              <div><div className="toggle-label">SMS Reminders</div><div className="toggle-sub">{sc.phone}</div></div>
+              <Toggle checked={scRem.sms} onChange={v=>updateReminder("sms",v)}/>
+            </div>
+            <div className="toggle-row">
+              <div><div className="toggle-label">Morning Reminder</div></div>
+              <input className="time-input" type="time" value={scRem.morningTime} onChange={e=>updateReminder("morningTime",e.target.value)}/>
+            </div>
+            <div className="toggle-row">
+              <div><div className="toggle-label">Evening Reminder</div></div>
+              <input className="time-input" type="time" value={scRem.eveningTime} onChange={e=>updateReminder("eveningTime",e.target.value)}/>
+            </div>
+            <div style={{marginTop:18}}>
+              <div className="section-label">Habits to Remind</div>
+              <div className="checkbox-group" style={{marginTop:8}}>
+                {HABITS.map(h=>(
+                  <button key={h.id} className={`checkbox-tag${scRem.habits.includes(h.id)?" sel":""}`}
+                    onClick={()=>updateReminder("habits",scRem.habits.includes(h.id)?scRem.habits.filter(x=>x!==h.id):[...scRem.habits,h.id])}>
+                    {h.icon} {h.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>}
+
+        {clientTab==="chat" && <>
+          <div className="card" style={{padding:0}}>
+            <div className="chat-wrap">
+              <div className="chat-messages" ref={chatRef}>
+                {scMessages.map((m,i)=>(
+                  <div key={i} className={`msg ${m.from}`}>
+                    <div className="msg-bubble">{m.text}</div>
+                    <div className="msg-meta">{m.from==="client"?sc.name.split(" ")[0]+" · ":"Coach · "}{m.time} · {m.date}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="chat-input-row">
+                <input className="chat-input" placeholder={`Message ${sc.name.split(" ")[0]}…`} value={msgInput} onChange={e=>setMsgInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendMsg()}/>
+                <button className="chat-send" onClick={sendMsg}>Send</button>
+              </div>
+            </div>
+          </div>
+        </>}
+
+        {clientTab==="notes" && <>
+          <div className="card">
+            <div className="section-label">Private Coach Notes</div>
+            <div style={{marginBottom:16}}>
+              {scNotes.length===0 && <div className="empty">No notes yet.</div>}
+              {scNotes.map((n,i)=>(
+                <div key={i} className="note-item">
+                  <div className="note-text">{n.text}</div>
+                  <div className="note-date">{n.date}</div>
+                </div>
+              ))}
+            </div>
+            <textarea className="textarea" placeholder="Add a private note…" value={newNote} onChange={e=>setNewNote(e.target.value)}/>
+            <button className="btn-sm" style={{marginTop:8}} onClick={addNote}>Save Note</button>
+          </div>
+        </>}
+
+        {clientTab==="access" && (() => {
+          const cAccess = clientAccessLevels[selectedClient] || {};
+          const currentLevel = ACCESS_LEVELS[cAccess.accessLevel] || ACCESS_LEVELS.expired;
+          const daysLeft = cAccess.accessLevel === "grace"
+            ? getDaysRemaining(cAccess.graceEndDate)
+            : cAccess.accessLevel === "active"
+            ? getDaysRemaining(cAccess.programEndDate)
+            : null;
+          return (
+            <div className="card">
+              <div className="section-label">Access Management — {sc.name}</div>
+
+              <div style={{background:"var(--warm)",border:"1px solid var(--border)",borderRadius:14,padding:"16px 18px",marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+                <div>
+                  <div style={{fontSize:12,color:"var(--light)",marginBottom:4}}>Current Access Level</div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:18}}>{currentLevel.icon}</span>
+                    <span style={{fontSize:15,fontWeight:600,color:"var(--dark)"}}>{currentLevel.label}</span>
+                    {daysLeft !== null && <span style={{fontSize:12,color:"var(--light)"}}>· {daysLeft} days remaining</span>}
+                  </div>
+                </div>
+                {cAccess.accessLevel === "app_msg" && (
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:11,color:"var(--light)",marginBottom:4}}>Messages this week</div>
+                    <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
+                      {Array.from({length:5},(_,i)=>(
+                        <div key={i} style={{width:10,height:10,borderRadius:"50%",background:i < scWeeklyMsgs ? "var(--terra)" : "rgba(0,0,0,.1)"}}/>
+                      ))}
+                      <span style={{fontSize:11,color:"var(--mid)",marginLeft:4}}>{scWeeklyMsgs}/5</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="section-label" style={{marginBottom:12}}>Change Access</div>
+              {Object.entries(ACCESS_LEVELS).map(([key, level]) => (
+                <div key={key} className="access-control-row">
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:16}}>{level.icon}</span>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:500,color:"var(--dark)"}}>{level.label}</div>
+                      <div style={{fontSize:11,color:"var(--light)"}}>
+                        {key==="active" && "Full app + unlimited messaging"}
+                        {key==="grace" && "Full app + messaging (4-week post-program window)"}
+                        {key==="app_only" && "App access only — no messaging ($12/mo)"}
+                        {key==="app_msg" && "App + up to 5 messages/week ($25/mo)"}
+                        {key==="view_only" && "View history only — no logging or messaging (free forever)"}
+                        {key==="expired" && "No access — client sees upgrade screen"}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    className="btn-sm"
+                    style={{
+                      background: cAccess.accessLevel === key ? "var(--sage)" : "var(--terra)",
+                      cursor: cAccess.accessLevel === key ? "default" : "pointer",
+                      opacity: cAccess.accessLevel === key ? 0.6 : 1,
+                      minWidth: 80,
+                    }}
+                    disabled={cAccess.accessLevel === key}
+                    onClick={async () => {
+                    if (supabase && selectedClient) {
+                      const { error } = await supabase.from("profiles").update({ access_level: key }).eq("id", selectedClient);
+                      if (error) {
+                        console.error("Access level update error:", error);
+                        showToast("Couldn't update this client's access level — please try again.");
+                        return;
+                      }
+                    }
+                    setClientAccessLevels(a => ({...a, [selectedClient]: {...a[selectedClient], accessLevel: key}}));
+                  }}
+                  >
+                    {cAccess.accessLevel === key ? "Current" : "Set"}
+                  </button>
+                </div>
+              ))}
+
+              {cAccess.accessLevel === "app_msg" && (
+                <div style={{marginTop:20,padding:"14px 16px",background:"rgba(61,125,107,.06)",borderRadius:12}}>
+                  <div style={{fontSize:13,color:"var(--mid)"}}>Weekly message count: <strong>{scWeeklyMsgs} / 5 used</strong> <span style={{color:"var(--light)",fontWeight:400}}>(rolling 7-day count, updates automatically)</span></div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {clientTab==="journal" && <>
+          <div style={{marginBottom:18}}>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:22,fontWeight:400,color:"var(--dark)",marginBottom:4}}>
+              {sc.name.split(" ")[0]}'s Journal <span style={{fontSize:16}}>📓</span>
+            </div>
+            <div style={{fontSize:13,color:"var(--light)"}}>Read-only view — this is your client's private daily log</div>
+          </div>
+          {(scLocked || !scPrivacy.shareJournal)
+            ? <LockedSection label="Journal & reflections" />
+            : <JournalView
+                journalData={clientJournals[selectedClient]||{}}
+                onUpdate={()=>{}}
+                readOnly={true}
+              />
+          }
+        </>}
+      </div>
+    </>
+  );
+
+  // MAIN COACH DASHBOARD
+  return (
+    <>
+      <Toast toast={toast} onClose={clearToast} />
+      <nav className="nav">
+        <div className="nav-inner">
+          <div className="nav-logo">serenity</div>
+          <div className="nav-tabs">{[{id:"clients",label:"Clients"},{id:"reports",label:"Reports"}].map(t=><button key={t.id} className={`nav-tab${tab===t.id?" active":""}`} onClick={()=>setTab(t.id)}>{t.label}</button>)}</div>
+          <div className="nav-right">
+            <span className="nav-badge">🌿 Coach</span>
+            <button className="nav-logout" onClick={onLogout}>Sign out</button>
+          </div>
+        </div>
+      </nav>
+      <div className="main">
+        {tab==="clients" && <>
+          <div className="greeting">
+            <div className="greeting-date">{dayNames[today.getDay()]}, {monthNames[today.getMonth()]} {today.getDate()}</div>
+            <div className="greeting-title">Your <em>clients</em> 🌿</div>
+          </div>
+          {loadingClients && (
+            <div style={{textAlign:"center",padding:"48px 24px",color:"var(--light)"}}>
+              <div style={{fontSize:32,marginBottom:12}}>🌿</div>
+              <div style={{fontSize:14}}>Loading your clients...</div>
+            </div>
+          )}
+          {!loadingClients && clients.length === 0 && (
+            <div style={{textAlign:"center",padding:"48px 24px",background:"var(--warm)",borderRadius:18,border:"1.5px dashed var(--border)"}}>
+              <div style={{fontSize:40,marginBottom:14}}>👋</div>
+              <div style={{fontSize:17,fontWeight:600,color:"var(--dark)",marginBottom:8}}>No clients yet</div>
+              <div style={{fontSize:13,color:"var(--light)",lineHeight:1.6}}>When clients sign up at app.serenityofbodyandmind.com<br/>they will appear here.</div>
+            </div>
+          )}
+          {clients.map((c,i)=>{
+            const h=allClientData[c.id]||{};
+            const streak=getStreak(h);
+            const todayPct=getCompletion(h[todayKey]);
+            return (
+              <div key={c.id} className={`client-list-card${selectedClient===c.id?" sel":""}`} style={{animationDelay:`${i*0.08}s`}} onClick={()=>setSelectedClient(c.id)}>
+                <div className="cl-avatar">{c.avatar}</div>
+                <div>
+                  <div className="cl-name">{c.name}</div>
+                  <div className="cl-goal">{c.goal}</div>
+                  <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
+                    <span className={`pill ${todayPct>=70?"pill-green":todayPct>=40?"pill-orange":"pill-red"}`}>{todayPct}% today</span>
+                    <span className="pill" style={{background:"rgba(61,125,107,.1)",color:"var(--terra)"}}>🔥 {streak} days</span>
+                    {(()=>{ const lvl=ACCESS_LEVELS[c.accessLevel]||ACCESS_LEVELS.expired; return <span className="pill" style={{background:lvl.color+"22",color:lvl.color,border:"1px solid "+lvl.color+"44"}}>{lvl.icon} {lvl.label}</span>; })()}
+                    {Object.entries(quizBadges[c.id]||{}).map(([quizType,primaryStyle])=>{
+                      const qd=QUIZZES[quizType];
+                      if(!qd) return null;
+                      const firstKey=primaryStyle.split(",")[0];
+                      const color=CHART_COLORS[qd.styles.indexOf(firstKey)] || "var(--terra)";
+                      return (
+                        <span key={quizType} className="quiz-badge" style={{background:color}}>
+                          {qd.profiles[firstKey]?.label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="cl-stats">
+                  <div style={{fontSize:13,color:"var(--light)",marginBottom:6}}>This week</div>
+                  <div style={{display:"flex",gap:4}}>
+                    {HABITS.map(hab=>{
+                      const val=h[todayKey]?.[hab.id]||0;
+                      const pct=Math.min(100,Math.round((val/hab.target)*100));
+                      return <div key={hab.id} title={hab.label} style={{width:8,height:32,borderRadius:4,background:"rgba(61,125,107,.1)",display:"flex",alignItems:"flex-end",overflow:"hidden"}}>
+                        <div style={{width:"100%",height:`${pct}%`,background:hab.color,borderRadius:4,transition:"height .4s"}}/>
+                      </div>;
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </>}
+
+        {tab==="reports" && <>
+          <div className="report-header">
+            <div className="report-title">Practice Reports</div>
+            <div className="report-sub">Overview of all client progress</div>
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:20}}>
+            {["weekly","monthly"].map(p=>(
+              <button key={p} className={`checkbox-tag${reportPeriod===p?" sel":""}`} onClick={()=>setReportPeriod(p)} style={{textTransform:"capitalize"}}>{p}</button>
+            ))}
+          </div>
+          <div className="stat-grid">
+            <div className="stat-card"><div className="stat-val">{CLIENTS.length}</div><div className="stat-label">Active Clients</div></div>
+            <div className="stat-card"><div className="stat-val">{CLIENTS.length ? Math.round(getAggregate(CLIENTS, allClientData).reduce((a,c)=>a+c.avg,0)/CLIENTS.length) : 0}%</div><div className="stat-label">Avg Completion</div></div>
+            <div className="stat-card"><div className="stat-val">{CLIENTS.length ? Math.max(...getAggregate(CLIENTS, allClientData).map(c=>c.streak)) : 0}</div><div className="stat-label">Best Streak</div></div>
+            <div className="stat-card"><div className="stat-val">{getAggregate(CLIENTS, allClientData).filter(c=>c.avg>=70).length}</div><div className="stat-label">On Track</div></div>
+          </div>
+          <div className="card">
+            <div className="section-label">{reportPeriod==="weekly"?"7":"30"}-Day Completion by Client</div>
+            {getAggregate(CLIENTS, allClientData).map(c=>(
+              <div key={c.id} className="report-bar-row" style={{cursor:"pointer"}} onClick={()=>setSelectedClient(c.id)}>
+                <div className="report-bar-label" style={{display:"flex",alignItems:"center",gap:8}}>
+                  <div className="cl-avatar" style={{width:28,height:28,fontSize:10}}>{c.avatar}</div>
+                  {c.name.split(" ")[0]}
+                </div>
+                <div className="report-bar-bg"><div className="report-bar-fill" style={{width:`${c.avg}%`,background:c.avg>=70?"#6BAE75":c.avg>=50?"#E8A838":"#E87D5B"}}/></div>
+                <div className="report-pct">{c.avg}%</div>
+              </div>
+            ))}
+          </div>
+        </>}
+      </div>
+    </>
+  );
+}

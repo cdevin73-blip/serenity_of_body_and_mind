@@ -7,5 +7,6 @@
     "DISABLE_ESLINT_PLUGIN": "true",
     "CI": "false",
     "GENERATE_SOURCEMAP": "false"
-  }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
