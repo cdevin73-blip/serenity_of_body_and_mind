@@ -4,6 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
 import { HABITS, ACCESS_LEVELS, DEFAULT_PRIVACY, DEFAULT_REMINDERS } from "../../lib/constants";
 import { today, todayKey, dayNames, monthNames, getWeekDays, getCompletion, getStreak } from "../../lib/dates";
+import { JOURNAL_SECTIONS, getJournalCompletion, getJournalStreak } from "../../lib/journal";
 import { getDaysRemaining, countMessagesThisWeek } from "../../lib/access";
 import { fetchInsights } from "../../lib/insights";
 import { getAggregate } from "../../lib/report";
@@ -125,7 +126,7 @@ export function CoachApp() {
   const scNotes     = selectedClient ? (coachNotes[selectedClient] || []) : [];
   const scGoals     = selectedClient ? (goals[selectedClient] || null) : null;
   const scRem       = selectedClient ? (reminders[selectedClient] || DEFAULT_REMINDERS) : null;
-  const scStreak    = scData ? getStreak(scData) : 0;
+  const scStreak    = scData ? getJournalStreak(scData) : 0;
   const scWeeklyMsgs = selectedClient ? countMessagesThisWeek(messages[selectedClient], selectedClient) : 0;
   const scQuizzes   = selectedClient ? (clientQuizzes[selectedClient] || {}) : {};
 
@@ -203,29 +204,41 @@ export function CoachApp() {
         shareJournal:       data?.share_journal       ?? true,
         shareFoodDiary:     data?.share_food_diary    ?? true,
         shareMedications:   data?.share_medications   ?? true,
-        shareMood:          data?.share_mood          ?? true,
       };
       setClientPrivacy(prev => ({...prev, [selectedClient]: privacy}));
       return privacy;
     }
 
     async function loadHabits(privacy) {
+      // Completion/streak now derive from journal_entries too, but this stays a
+      // separate fetch gated on shareHabits alone (not shareJournal/shareFoodDiary/
+      // shareMedications) — a client can share their completion streak without
+      // sharing the actual journal text, same as before the Phase 3 remap.
       if (!privacy.coachAccessEnabled || !privacy.shareHabits) {
         setClientJournals(prev => ({...prev, ["__habits__"+selectedClient]: {}}));
         return;
       }
       const { data } = await supabase
-        .from("habit_logs").select("*")
+        .from("journal_entries").select("*")
         .eq("user_id", selectedClient)
-        .order("log_date", { ascending: true });
+        .order("entry_date", { ascending: true });
 
       if (data) {
         const h = {};
         data.forEach(row => {
-          h[row.log_date] = {
-            sleep: parseFloat(row.sleep)||0, water: parseInt(row.water)||0,
-            exercise: parseInt(row.exercise)||0, nutrition: parseInt(row.nutrition)||0,
-            mood: privacy.shareMood ? (parseInt(row.mood)||0) : undefined,
+          h[row.entry_date] = {
+            sleepHours:  parseFloat(row.sleep_hours)  || 0,
+            waterGlasses: parseInt(row.water_glasses) || 0,
+            intention:   row.intention   || "",
+            reflection:  row.reflection  || "",
+            gratitude:   [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""],
+            medications: row.medications || "",
+            movementCardio:     row.movement_cardio     || "",
+            movementWeights:    row.movement_weights    || "",
+            movementStretching: row.movement_stretching || "",
+            morning:   { food: row.morning_food||"" },
+            afternoon: { food: row.afternoon_food||"" },
+            evening:   { food: row.evening_food||"" },
           };
         });
         setClientJournals(prev => ({...prev, ["__habits__"+selectedClient]: h}));
@@ -245,15 +258,19 @@ export function CoachApp() {
         const j = {};
         data.forEach(row => {
           j[row.entry_date] = {
+            sleepHours:  privacy.shareJournal ? (parseFloat(row.sleep_hours)||0) : 0,
+            waterGlasses: privacy.shareFoodDiary ? (parseInt(row.water_glasses)||0) : 0,
             intention:   privacy.shareJournal ? (row.intention||"")  : "",
             reflection:  privacy.shareJournal ? (row.reflection||"") : "",
             gratitude:   privacy.shareJournal ? [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""] : ["","",""],
             medications: privacy.shareMedications ? (row.medications||"") : "",
-            exercise:    row.exercise||"",
-            meditation:  row.meditation||"",
-            morning:   { food: privacy.shareFoodDiary ? (row.morning_food||"")   : "", water: privacy.shareFoodDiary ? (row.morning_water||0)   : 0 },
-            afternoon: { food: privacy.shareFoodDiary ? (row.afternoon_food||"") : "", water: privacy.shareFoodDiary ? (row.afternoon_water||0) : 0 },
-            evening:   { food: privacy.shareFoodDiary ? (row.evening_food||"")   : "", water: privacy.shareFoodDiary ? (row.evening_water||0)   : 0 },
+            movementCardio:     privacy.shareJournal ? (row.movement_cardio||"")     : "",
+            movementWeights:    privacy.shareJournal ? (row.movement_weights||"")    : "",
+            movementStretching: privacy.shareJournal ? (row.movement_stretching||"") : "",
+            meditation:  privacy.shareJournal ? (row.meditation||"") : "",
+            morning:   { food: privacy.shareFoodDiary ? (row.morning_food||"")   : "" },
+            afternoon: { food: privacy.shareFoodDiary ? (row.afternoon_food||"") : "" },
+            evening:   { food: privacy.shareFoodDiary ? (row.evening_food||"")   : "" },
           };
         });
         setClientJournals(prev => ({...prev, [selectedClient]: j}));
@@ -360,7 +377,7 @@ export function CoachApp() {
           </div>
           <div style={{textAlign:"right",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
             <div>
-              <div style={{fontSize:24,fontWeight:700,color:"var(--terra)"}}>{getCompletion(scData?.[todayKey])}%</div>
+              <div style={{fontSize:24,fontWeight:700,color:"var(--terra)"}}>{getJournalCompletion(scData?.[todayKey])}%</div>
               <div style={{fontSize:11,color:"var(--light)"}}>today</div>
             </div>
             <button className="btn-download" onClick={()=>setShowCoachDownload(true)}>📥 Export data</button>
@@ -369,7 +386,6 @@ export function CoachApp() {
         {showCoachDownload && (
           <DownloadModal
             client={sc}
-            history={scData||{}}
             journalData={clientJournals[selectedClient]||{}}
             onClose={()=>setShowCoachDownload(false)}
           />
@@ -377,15 +393,15 @@ export function CoachApp() {
 
         {clientTab==="overview" && <>
           <div className="card" style={{marginBottom:18}}>
-            <div className="section-label">7-Day Habit Progress</div>
-            {HABITS.map(h=>(
-              <div className="week-row" key={h.id}>
-                <div className="week-habit-label">{h.icon} {h.label}</div>
+            <div className="section-label">7-Day Journal Progress</div>
+            {JOURNAL_SECTIONS.map(s=>(
+              <div className="week-row" key={s.id}>
+                <div className="week-habit-label">{s.icon} {s.label}</div>
                 <div className="week-dots">
                   {weekDays.map(({key,label})=>{
-                    const val=scData?.[key]?.[h.id]||0;
-                    const pct=Math.min(100,Math.round((val/h.target)*100));
-                    return <div key={key} className="wdot" style={{background:pct>=80?h.color:pct>=40?h.color+"99":"rgba(61,125,107,.08)",color:pct>=40?"#fff":"var(--light)",fontSize:9}}>{pct}%</div>;
+                    const done = scData?.[key] ? s.check(scData[key]) : false;
+                    const pct = done ? 100 : 0;
+                    return <div key={key} className="wdot" style={{background:pct>=80?s.color:pct>=40?s.color+"99":"rgba(61,125,107,.08)",color:pct>=40?"#fff":"var(--light)",fontSize:9}}>{pct}%</div>;
                   })}
                 </div>
               </div>

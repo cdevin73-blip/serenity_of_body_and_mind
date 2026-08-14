@@ -291,6 +291,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--dark);
 .gratitude-num{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--terra),var(--terra-l));color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:8px;}
 .intention-banner{background:linear-gradient(135deg,rgba(61,125,107,.1),rgba(122,158,126,.08));border:1px solid rgba(122,158,126,.25);border-radius:20px;padding:22px 24px;margin-bottom:18px;}
 .intention-prompt{font-family:'Fraunces',serif;font-size:17px;font-style:italic;color:var(--mid);margin-bottom:12px;}
+.sleep-entry{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px 20px;margin-bottom:14px;box-shadow:var(--sh);flex-wrap:wrap;gap:10px;}
+.sleep-entry-label{font-size:13px;font-weight:600;color:var(--mid);display:flex;align-items:center;gap:8px;}
+.sleep-entry-input{display:flex;align-items:center;gap:8px;}
+.sleep-entry-input input{width:60px;padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);background:var(--warm);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--dark);text-align:center;}
 .med-row{display:flex;gap:10px;align-items:flex-start;}
 .saved-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--sage);font-weight:600;padding:4px 10px;background:rgba(122,158,126,.1);border-radius:20px;margin-top:8px;opacity:0;transition:opacity .4s;}
 .saved-badge.show{opacity:1;}

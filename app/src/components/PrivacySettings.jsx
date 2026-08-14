@@ -12,7 +12,6 @@ export function PrivacySettings({ privacy, onChange }) {
     { key: "shareJournal",     icon: "📓", title: "Journal & reflections",           sub: "Daily intentions, end-of-day reflections" },
     { key: "shareFoodDiary",   icon: "🥗", title: "Food diary",                     sub: "Morning, afternoon, and evening meal logs" },
     { key: "shareMedications", icon: "💊", title: "Medications & supplements",       sub: "Daily medication logs" },
-    { key: "shareMood",        icon: "☀️", title: "Mood ratings",                   sub: "Daily mood check-ins" },
   ];
 
   return (

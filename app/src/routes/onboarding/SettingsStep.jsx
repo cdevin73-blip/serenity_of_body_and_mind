@@ -46,7 +46,6 @@ export function SettingsStep() {
       share_journal: privacy.shareJournal,
       share_food_diary: privacy.shareFoodDiary,
       share_medications: privacy.shareMedications,
-      share_mood: privacy.shareMood,
     }, { onConflict: "user_id" });
 
     if (goalsError || privacyError) {
@@ -56,7 +55,7 @@ export function SettingsStep() {
       return;
     }
 
-    await advance("complete", "/client/today", { complete: true });
+    await advance("complete", "/client/journal", { complete: true });
   }
 
   return (

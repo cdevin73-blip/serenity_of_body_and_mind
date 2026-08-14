@@ -3,11 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase as supabaseClient } from "../../lib/supabaseClient";
 import { HABITS, DEFAULT_GOALS, DEFAULT_PRIVACY } from "../../lib/constants";
-import { today, todayKey, dayNames, monthNames, getWeekDays, getCompletion, getStreak, getMonthAvg } from "../../lib/dates";
+import { today, dayNames, monthNames, getWeekDays } from "../../lib/dates";
+import { JOURNAL_SECTIONS, getJournalCompletion, getJournalStreak, getJournalSectionRate, getJournalNumericAvg } from "../../lib/journal";
 import { getAccessInfo, countMessagesThisWeek } from "../../lib/access";
 import { fetchInsights } from "../../lib/insights";
 import { Toast, useToast } from "../../components/Toast";
-import { HabitCard } from "../../components/HabitCard";
 import { MessageLimitBar } from "../../components/MessageLimitBar";
 import { AccessExpiredScreen, GraceBanner, ViewOnlyBanner } from "../../components/AccessScreens";
 import { PrivacySettings } from "../../components/PrivacySettings";
@@ -19,7 +19,7 @@ import { QUIZZES } from "../../lib/quizzes";
 export function ClientApp() {
   const { profile: supabaseProfile, logout } = useAuth();
   const navigate = useNavigate();
-  const { tab = "today" } = useParams();
+  const { tab = "journal" } = useParams();
   const setTab = (id) => navigate(`/client/${id}`);
   const clientId = supabaseProfile.id;
 
@@ -44,8 +44,6 @@ export function ClientApp() {
   const [subscribedLevel, setSubscribedLevel] = useState(null);
   const client = subscribedLevel ? { ...clientData, accessLevel: subscribedLevel, subscriptionPlan: subscribedLevel } : clientData;
   const access = getAccessInfo(client);
-  const [history, setHistory] = useState({});
-  const [todayLog, setTodayLog] = useState({});
   const [customHabits, setCustomHabits] = useState([]);
   const [newHabitName, setNewHabitName] = useState("");
   const [journalData, setJournalData] = useState({});
@@ -62,41 +60,16 @@ export function ClientApp() {
   const [activeQuiz, setActiveQuiz] = useState(null);
   const { toast, showToast, clearToast } = useToast();
   const chatRef = useRef(null);
+  const journalSaveTimer = useRef(null);
   const MSG_LIMIT = 500;
   const isViewOnly = access.viewOnly || false;
 
   const weekDays = getWeekDays(7);
-  const streak = getStreak(history);
-  const allHabits = [...HABITS, ...customHabits];
+  const streak = getJournalStreak(journalData);
 
   const msgLimit = access.msgLimit;
   const msgsUsed = countMessagesThisWeek(messages, clientId);
   const canSendMsg = access.canMessage && (msgLimit === null || msgsUsed < msgLimit);
-
-  async function logHabit(id, val) {
-    const newLog = {...todayLog,[id]:val};
-    setTodayLog(newLog);
-    setHistory(h=>({...h,[todayKey]:{...(h[todayKey]||{}),[id]:val}}));
-
-    if (supabaseClient && clientId && clientId.length > 10) {
-      const upsertData = {
-        user_id: clientId,
-        log_date: todayKey,
-        sleep:     id==="sleep"     ? val : (newLog.sleep||0),
-        water:     id==="water"     ? val : (newLog.water||0),
-        exercise:  id==="exercise"  ? val : (newLog.exercise||0),
-        nutrition: id==="nutrition" ? val : (newLog.nutrition||0),
-        mood:      id==="mood"      ? val : (newLog.mood||0),
-      };
-      const { error } = await supabaseClient
-        .from("habit_logs")
-        .upsert(upsertData, { onConflict: "user_id,log_date" });
-      if (error) {
-        console.error("Habit save error:", error);
-        showToast("That habit didn't save — check your connection and try again.");
-      }
-    }
-  }
 
   async function sendMsg() {
     if(!msgInput.trim() || !canSendMsg || msgInput.length > MSG_LIMIT) return;
@@ -146,7 +119,7 @@ export function ClientApp() {
 
   async function loadInsights() {
     setLoadingInsights(true); setTab("insights");
-    try { const ins=await fetchInsights(client.name,history,goals); setInsights(ins); }
+    try { const ins=await fetchInsights(client.name,journalData,goals); setInsights(ins); }
     catch { setInsights([{type:"tip",emoji:"💡",label:"Keep Going",text:"You're building great habits! Stay consistent and your coach will share personalized feedback soon."}]); }
     setLoadingInsights(false);
   }
@@ -155,31 +128,6 @@ export function ClientApp() {
     if (!supabaseClient || !clientId || clientId.length <= 10) return;
 
     async function loadData() {
-      const { data: habits } = await supabaseClient
-        .from("habit_logs")
-        .select("*")
-        .eq("user_id", clientId)
-        .order("log_date", { ascending: true });
-
-      if (habits) {
-        const h = {};
-        habits.forEach(row => {
-          h[row.log_date] = {
-            sleep:     parseFloat(row.sleep)     || 0,
-            water:     parseInt(row.water)       || 0,
-            exercise:  parseInt(row.exercise)    || 0,
-            nutrition: parseInt(row.nutrition)   || 0,
-            mood:      parseInt(row.mood)        || 0,
-          };
-        });
-        setHistory(h);
-        if (h[todayKey]) {
-          setTodayLog(h[todayKey]);
-        } else {
-          setTodayLog({});
-        }
-      }
-
       const { data: journal } = await supabaseClient
         .from("journal_entries")
         .select("*")
@@ -189,15 +137,19 @@ export function ClientApp() {
         const j = {};
         journal.forEach(row => {
           j[row.entry_date] = {
+            sleepHours:  parseFloat(row.sleep_hours) || 0,
+            waterGlasses: parseInt(row.water_glasses) || 0,
             intention:  row.intention  || "",
             reflection: row.reflection || "",
             gratitude:  [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""],
             medications: row.medications || "",
-            exercise:   row.exercise   || "",
+            movementCardio:     row.movement_cardio     || "",
+            movementWeights:    row.movement_weights    || "",
+            movementStretching: row.movement_stretching || "",
             meditation: row.meditation || "",
-            morning:    { food: row.morning_food||"",   water: row.morning_water||0 },
-            afternoon:  { food: row.afternoon_food||"", water: row.afternoon_water||0 },
-            evening:    { food: row.evening_food||"",   water: row.evening_water||0 },
+            morning:    { food: row.morning_food||"" },
+            afternoon:  { food: row.afternoon_food||"" },
+            evening:    { food: row.evening_food||"" },
           };
         });
         setJournalData(j);
@@ -216,7 +168,6 @@ export function ClientApp() {
           shareJournal:       priv.share_journal       ?? true,
           shareFoodDiary:     priv.share_food_diary    ?? true,
           shareMedications:   priv.share_medications   ?? true,
-          shareMood:          priv.share_mood          ?? true,
         });
       }
 
@@ -282,7 +233,6 @@ export function ClientApp() {
   }
 
   const tabs = [
-    {id:"today",label:"Today"},
     {id:"journal",label:"📓 Journal"},
     {id:"history",label:"History"},
     {id:"insights",label:"✨ Insights"},
@@ -299,7 +249,6 @@ export function ClientApp() {
       {showDownload && (
         <DownloadModal
           client={client}
-          history={history}
           journalData={journalData}
           onClose={()=>setShowDownload(false)}
         />
@@ -322,34 +271,13 @@ export function ClientApp() {
         </div>
       </nav>
       <div className="main">
-        {tab==="today" && <>
-          <div className="greeting">
-            <div className="greeting-date">{dayNames[today.getDay()]}, {monthNames[today.getMonth()]} {today.getDate()}</div>
-            <div className="greeting-title">Good day, <em>{client.name.split(" ")[0]}</em> ✨</div>
-          </div>
-          {client.accessLevel === "grace" && <GraceBanner daysLeft={access.daysLeft} />}
-          {isViewOnly && <ViewOnlyBanner onDownload={()=>setShowDownload(true)}/>}
-          <div className="streak-banner">
-            <div>
-              <div style={{fontFamily:"'Fraunces',serif",fontSize:22,fontWeight:400}}>🔥 Current Streak</div>
-              <div style={{fontSize:13,opacity:.8,marginTop:2}}>You're on a roll — keep it up!</div>
-            </div>
-            <div className="streak-num">{streak} <span style={{fontSize:18}}>days</span></div>
-          </div>
-          <div className="habits-grid">
-            {allHabits.map((h,i)=>(
-              <HabitCard key={h.id} habit={h} value={todayLog[h.id]||0} onChange={isViewOnly ? ()=>{} : v=>logHabit(h.id,v)} idx={i} readOnly={isViewOnly}/>
-            ))}
-          </div>
-        </>}
-
         {tab==="history" && <>
           <div className="section-title" style={{marginBottom:22}}>Your Progress</div>
           <div className="card" style={{marginBottom:18}}>
             <div className="section-label">7-Day Completion</div>
             <div className="history-grid7">
               {weekDays.map(({key,label})=>{
-                const pct=getCompletion(history[key]);
+                const pct=getJournalCompletion(journalData[key]);
                 const bg=pct>=80?"#6BAE75":pct>=50?"#E8A838":pct>0?"#E87D5B":"rgba(61,125,107,.1)";
                 return (
                   <div className="hday" key={key}>
@@ -359,15 +287,15 @@ export function ClientApp() {
                 );
               })}
             </div>
-            <div className="section-label" style={{marginTop:8}}>Per Habit</div>
-            {HABITS.map(h=>(
-              <div className="week-row" key={h.id}>
-                <div className="week-habit-label">{h.icon} {h.label}</div>
+            <div className="section-label" style={{marginTop:8}}>Per Section</div>
+            {JOURNAL_SECTIONS.map(s=>(
+              <div className="week-row" key={s.id}>
+                <div className="week-habit-label">{s.icon} {s.label}</div>
                 <div className="week-dots">
                   {weekDays.map(({key,label})=>{
-                    const val=history[key]?.[h.id]||0;
-                    const pct=Math.min(100,Math.round((val/h.target)*100));
-                    return <div key={key} className="wdot" style={{background:pct>=80?h.color:pct>=40?h.color+"99":"rgba(61,125,107,.08)",color:pct>=40?"#fff":"var(--light)"}}>{label[0]}</div>;
+                    const done = journalData[key] ? s.check(journalData[key]) : false;
+                    const pct = done ? 100 : 0;
+                    return <div key={key} className="wdot" style={{background:pct>=80?s.color:pct>=40?s.color+"99":"rgba(61,125,107,.08)",color:pct>=40?"#fff":"var(--light)"}}>{label[0]}</div>;
                   })}
                 </div>
               </div>
@@ -375,13 +303,27 @@ export function ClientApp() {
           </div>
           <div className="card">
             <div className="section-label">30-Day Averages</div>
-            {HABITS.map(h=>{
-              const avg=getMonthAvg(history,h.id);
-              const pct=Math.min(100,Math.round((avg/h.target)*100));
+            {[
+              { id:"sleepHours",   icon:"🌙", label:"Sleep",  color:"#7C6FA0", target:8 },
+              { id:"waterGlasses", icon:"💧", label:"Water",  color:"#5BA4CF", target:8 },
+            ].map(f=>{
+              const avg=getJournalNumericAvg(journalData,f.id,30);
+              const pct=Math.min(100,Math.round((avg/f.target)*100));
               return (
-                <div className="report-bar-row" key={h.id}>
-                  <div className="report-bar-label">{h.icon} {h.label}</div>
-                  <div className="report-bar-bg"><div className="report-bar-fill" style={{width:`${pct}%`,background:h.color}}/></div>
+                <div className="report-bar-row" key={f.id}>
+                  <div className="report-bar-label">{f.icon} {f.label}</div>
+                  <div className="report-bar-bg"><div className="report-bar-fill" style={{width:`${pct}%`,background:f.color}}/></div>
+                  <div className="report-pct">{pct}%</div>
+                </div>
+              );
+            })}
+            <div className="section-label" style={{marginTop:16}}>Logged This Month</div>
+            {JOURNAL_SECTIONS.map(s=>{
+              const pct=getJournalSectionRate(journalData,s.id,30);
+              return (
+                <div className="report-bar-row" key={s.id}>
+                  <div className="report-bar-label">{s.icon} {s.label}</div>
+                  <div className="report-bar-bg"><div className="report-bar-fill" style={{width:`${pct}%`,background:s.color}}/></div>
                   <div className="report-pct">{pct}%</div>
                 </div>
               );
@@ -424,7 +366,6 @@ export function ClientApp() {
                   <div className="goal-label">{h.label}</div>
                   <div className="goal-val">{h.target} {h.unit} per day</div>
                 </div>
-                <span style={{marginLeft:"auto"}}>{getCompletion({[h.id]:todayLog[h.id]||0})>=60?<span className="pill pill-green">On track</span>:<span className="pill pill-orange">Keep going</span>}</span>
               </div>
             ))}
           </div>
@@ -561,7 +502,6 @@ export function ClientApp() {
                 share_journal:        newPrivacy.shareJournal,
                 share_food_diary:     newPrivacy.shareFoodDiary,
                 share_medications:    newPrivacy.shareMedications,
-                share_mood:           newPrivacy.shareMood,
               }, { onConflict: "user_id" });
             if (error) {
               console.error("Privacy save error:", error);
@@ -573,41 +513,48 @@ export function ClientApp() {
 
         {tab==="journal" && <>
           <div className="greeting" style={{marginBottom:20}}>
-            <div className="greeting-title">Daily <em>Journal</em> 📓</div>
-            <div style={{fontSize:13,color:"var(--light)",marginTop:4}}>Your private self-care log — food, water, gratitude & reflection</div>
+            <div className="greeting-date">{dayNames[today.getDay()]}, {monthNames[today.getMonth()]} {today.getDate()}</div>
+            <div className="greeting-title">Good day, <em>{client.name.split(" ")[0]}</em> ✨</div>
           </div>
+          {client.accessLevel === "grace" && <GraceBanner daysLeft={access.daysLeft} />}
+          {isViewOnly && <ViewOnlyBanner onDownload={()=>setShowDownload(true)}/>}
           <JournalView
             journalData={journalData}
-            onUpdate={async (dateKey, entry) => {
+            streak={streak}
+            onUpdate={(dateKey, entry) => {
               setJournalData(d => ({...d, [dateKey]: entry}));
-              if (supabaseClient && clientId && clientId.length > 10) {
-                const { error } = await supabaseClient
-                  .from("journal_entries")
-                  .upsert({
-                    user_id:         clientId,
-                    entry_date:      dateKey,
-                    intention:       entry.intention || "",
-                    reflection:      entry.reflection || "",
-                    gratitude_1:     entry.gratitude?.[0] || "",
-                    gratitude_2:     entry.gratitude?.[1] || "",
-                    gratitude_3:     entry.gratitude?.[2] || "",
-                    medications:     entry.medications || "",
-                    exercise:        entry.exercise || "",
-                    meditation:      entry.meditation || "",
-                    morning_food:    entry.morning?.food || "",
-                    morning_water:   entry.morning?.water || 0,
-                    afternoon_food:  entry.afternoon?.food || "",
-                    afternoon_water: entry.afternoon?.water || 0,
-                    evening_food:    entry.evening?.food || "",
-                    evening_water:   entry.evening?.water || 0,
-                  }, { onConflict: "user_id,entry_date" });
-                if (error) {
-                  console.error("Journal save error:", error);
-                  showToast("Your journal entry didn't save — please try again.");
+              if (journalSaveTimer.current) clearTimeout(journalSaveTimer.current);
+              journalSaveTimer.current = setTimeout(async () => {
+                if (supabaseClient && clientId && clientId.length > 10) {
+                  const { error } = await supabaseClient
+                    .from("journal_entries")
+                    .upsert({
+                      user_id:         clientId,
+                      entry_date:      dateKey,
+                      sleep_hours:     entry.sleepHours || 0,
+                      water_glasses:   entry.waterGlasses || 0,
+                      intention:       entry.intention || "",
+                      reflection:      entry.reflection || "",
+                      gratitude_1:     entry.gratitude?.[0] || "",
+                      gratitude_2:     entry.gratitude?.[1] || "",
+                      gratitude_3:     entry.gratitude?.[2] || "",
+                      medications:     entry.medications || "",
+                      movement_cardio:     entry.movementCardio || "",
+                      movement_weights:    entry.movementWeights || "",
+                      movement_stretching: entry.movementStretching || "",
+                      meditation:      entry.meditation || "",
+                      morning_food:    entry.morning?.food || "",
+                      afternoon_food:  entry.afternoon?.food || "",
+                      evening_food:    entry.evening?.food || "",
+                    }, { onConflict: "user_id,entry_date" });
+                  if (error) {
+                    console.error("Journal save error:", error);
+                    showToast("Your journal entry didn't save — please try again.");
+                  }
                 }
-              }
+              }, 600);
             }}
-            readOnly={false}
+            readOnly={isViewOnly}
           />
         </>}
       </div>

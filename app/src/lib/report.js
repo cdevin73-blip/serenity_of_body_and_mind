@@ -1,7 +1,7 @@
-import { todayKey } from "./dates";
-import { getStreak, getCompletion } from "./dates";
+import { JOURNAL_SECTIONS, getJournalNumericAvg, getJournalSectionRate } from "./journal";
+import { todayKey, getStreak, getCompletion } from "./dates";
 
-export function generateClientReport(client, history, journalData) {
+export function generateClientReport(client, journalData) {
   const lines = [];
   const today = new Date();
   const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -14,59 +14,51 @@ export function generateClientReport(client, history, journalData) {
   lines.push("Program: " + (client.program || "-"));
   lines.push("Goal: " + (client.goal || "-"));
   lines.push("\n" + "=".repeat(50));
-  lines.push("\n30-DAY HABIT SUMMARY\n");
+  lines.push("\n30-DAY SUMMARY\n");
 
-  const HABITS_LOCAL = [
-    { id:"sleep", label:"Sleep", unit:"hrs", target:8 },
-    { id:"water", label:"Water", unit:"glasses", target:8 },
-    { id:"exercise", label:"Exercise", unit:"min", target:30 },
-    { id:"nutrition", label:"Nutrition", unit:"meals", target:3 },
-    { id:"mood", label:"Mood", unit:"/5", target:5 },
-  ];
+  const sleepAvg = getJournalNumericAvg(journalData, "sleepHours", 30);
+  if (sleepAvg > 0) lines.push(`Sleep: avg ${sleepAvg} hrs (${Math.min(100,Math.round(sleepAvg/8*100))}% of goal)`);
+  const waterAvg = getJournalNumericAvg(journalData, "waterGlasses", 30);
+  if (waterAvg > 0) lines.push(`Water: avg ${waterAvg} glasses (${Math.min(100,Math.round(waterAvg/8*100))}% of goal)`);
 
-  HABITS_LOCAL.forEach(h => {
-    const vals = Object.values(history).map(d => d[h.id] || 0).filter(v => v > 0);
-    if (vals.length === 0) return;
-    const avg = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
-    const pct = Math.round((parseFloat(avg)/h.target)*100);
-    lines.push(`${h.label}: avg ${avg} ${h.unit} (${pct}% of goal)`);
+  JOURNAL_SECTIONS.forEach(s => {
+    const rate = getJournalSectionRate(journalData, s.id, 30);
+    lines.push(`${s.label}: logged ${rate}% of the last 30 days`);
   });
 
   lines.push("\n" + "=".repeat(50));
   lines.push("\nDAILY LOG (last 30 days)\n");
 
-  const sortedDays = Object.keys(history).sort().reverse().slice(0, 30);
+  const sortedDays = Object.keys(journalData).sort().reverse().slice(0, 30);
   sortedDays.forEach(dateKey => {
     const d = new Date(dateKey);
     const label = `${dayNames[d.getDay()]} ${monthNames[d.getMonth()]} ${d.getDate()}`;
     lines.push("\n" + label);
     lines.push("-".repeat(20));
-    const dayData = history[dateKey] || {};
-    HABITS_LOCAL.forEach(h => {
-      if (dayData[h.id] !== undefined) {
-        lines.push(`  ${h.label}: ${dayData[h.id]} ${h.unit}`);
-      }
-    });
     const journal = journalData[dateKey];
-    if (journal) {
-      if (journal.intention) lines.push(`  Intention: ${journal.intention}`);
-      if (journal.reflection) lines.push(`  Reflection: ${journal.reflection}`);
-      if (journal.gratitude?.some(g=>g)) {
-        lines.push("  Gratitude:");
-        journal.gratitude.filter(g=>g).forEach((g,i) => lines.push(`    ${i+1}. ${g}`));
-      }
-      const totalWater = ((journal.morning?.water||0)+(journal.afternoon?.water||0)+(journal.evening?.water||0))*8;
-      if (totalWater > 0) lines.push(`  Water logged: ${totalWater} oz`);
-      const foods = [
-        journal.morning?.food && `Morning: ${journal.morning.food}`,
-        journal.afternoon?.food && `Afternoon: ${journal.afternoon.food}`,
-        journal.evening?.food && `Evening: ${journal.evening.food}`,
-      ].filter(Boolean);
-      if (foods.length) { lines.push("  Food diary:"); foods.forEach(f => lines.push(`    ${f}`)); }
-      if (journal.medications) lines.push(`  Medications: ${journal.medications}`);
-      if (journal.exercise) lines.push(`  Exercise: ${journal.exercise}`);
-      if (journal.meditation) lines.push(`  Self-care: ${journal.meditation}`);
+    if (!journal) return;
+    if (journal.sleepHours) lines.push(`  Sleep: ${journal.sleepHours} hrs`);
+    if (journal.waterGlasses) lines.push(`  Water: ${journal.waterGlasses * 8} oz`);
+    if (journal.intention) lines.push(`  Intention: ${journal.intention}`);
+    if (journal.reflection) lines.push(`  Reflection: ${journal.reflection}`);
+    if (journal.gratitude?.some(g=>g)) {
+      lines.push("  Gratitude:");
+      journal.gratitude.filter(g=>g).forEach((g,i) => lines.push(`    ${i+1}. ${g}`));
     }
+    const foods = [
+      journal.morning?.food && `Morning: ${journal.morning.food}`,
+      journal.afternoon?.food && `Afternoon: ${journal.afternoon.food}`,
+      journal.evening?.food && `Evening: ${journal.evening.food}`,
+    ].filter(Boolean);
+    if (foods.length) { lines.push("  Food diary:"); foods.forEach(f => lines.push(`    ${f}`)); }
+    if (journal.medications) lines.push(`  Medications: ${journal.medications}`);
+    const movement = [
+      journal.movementCardio && `Cardio: ${journal.movementCardio}`,
+      journal.movementWeights && `Weight training: ${journal.movementWeights}`,
+      journal.movementStretching && `Stretching/Yoga: ${journal.movementStretching}`,
+    ].filter(Boolean);
+    if (movement.length) { lines.push("  Movement:"); movement.forEach(m => lines.push(`    ${m}`)); }
+    if (journal.meditation) lines.push(`  Self-care: ${journal.meditation}`);
   });
 
   lines.push("\n" + "=".repeat(50));

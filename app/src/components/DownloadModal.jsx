@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { generateClientReport, downloadTextFile } from "../lib/report";
 
-export function DownloadModal({ client, history, journalData, onClose }) {
+export function DownloadModal({ client, journalData, onClose }) {
   const [downloading, setDownloading] = useState(false);
 
   function handleDownload(type) {
     setDownloading(true);
     setTimeout(() => {
       if (type === "full") {
-        const report = generateClientReport(client, history, journalData);
+        const report = generateClientReport(client, journalData);
         downloadTextFile(`serenity-wellness-report-${client.name.replace(/\s/g,"-").toLowerCase()}.txt`, report);
       } else if (type === "journal") {
         const entries = Object.entries(journalData).sort(([a],[b])=>b.localeCompare(a));
@@ -24,12 +24,12 @@ export function DownloadModal({ client, history, journalData, onClose }) {
           }
         });
         downloadTextFile(`serenity-journal-${client.name.replace(/\s/g,"-").toLowerCase()}.txt`, lines.join("\n"));
-      } else if (type === "habits") {
-        const lines = ["SERENITY OF BODY AND MIND - Habit History", `Client: ${client.name}`, "", "Date,Sleep (hrs),Water (glasses),Exercise (min),Nutrition (meals),Mood (/5)"];
-        Object.entries(history).sort(([a],[b])=>a.localeCompare(b)).forEach(([date, d]) => {
-          lines.push(`${date},${d.sleep||0},${d.water||0},${d.exercise||0},${d.nutrition||0},${d.mood||0}`);
+      } else if (type === "sleep-water") {
+        const lines = ["SERENITY OF BODY AND MIND - Sleep & Water History", `Client: ${client.name}`, "", "Date,Sleep (hrs),Water (glasses)"];
+        Object.entries(journalData).sort(([a],[b])=>a.localeCompare(b)).forEach(([date, d]) => {
+          lines.push(`${date},${d.sleepHours||0},${d.waterGlasses||0}`);
         });
-        downloadTextFile(`serenity-habits-${client.name.replace(/\s/g,"-").toLowerCase()}.csv`, lines.join("\n"));
+        downloadTextFile(`serenity-sleep-water-${client.name.replace(/\s/g,"-").toLowerCase()}.csv`, lines.join("\n"));
       }
       setDownloading(false);
       onClose();
@@ -56,11 +56,11 @@ export function DownloadModal({ client, history, journalData, onClose }) {
               <div className="download-option-desc">All daily intentions, reflections, and gratitude entries</div>
             </div>
           </div>
-          <div className="download-option" onClick={()=>handleDownload("habits")}>
+          <div className="download-option" onClick={()=>handleDownload("sleep-water")}>
             <span className="download-option-icon">📊</span>
             <div>
-              <div className="download-option-name">Habit Data (CSV)</div>
-              <div className="download-option-desc">Spreadsheet-ready habit log — import into Excel or Google Sheets</div>
+              <div className="download-option-name">Sleep & Water Data (CSV)</div>
+              <div className="download-option-desc">Spreadsheet-ready sleep and water log — import into Excel or Google Sheets</div>
             </div>
           </div>
         </div>

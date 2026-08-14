@@ -32,7 +32,7 @@ export function RequireOnboarding() {
     return <Outlet/>;
   }
 
-  if (onOnboardingRoute) return <Navigate to="/client/today" replace/>;
+  if (onOnboardingRoute) return <Navigate to="/client/journal" replace/>;
   return <Outlet/>;
 }
 
@@ -40,7 +40,7 @@ export function RequireRole({ role }) {
   const { profile } = useAuth();
   const effectiveRole = profile?.role === "coach" ? "coach" : "client";
   if (effectiveRole !== role) {
-    return <Navigate to={effectiveRole === "coach" ? "/coach" : "/client/today"} replace/>;
+    return <Navigate to={effectiveRole === "coach" ? "/coach" : "/client/journal"} replace/>;
   }
   return <Outlet/>;
 }
@@ -50,5 +50,5 @@ export function RootRedirect() {
   if (loading) return <LoadingScreen/>;
   if (!session) return <Navigate to="/auth" replace/>;
   if (!profile) return <Navigate to="/onboarding" replace/>;
-  return <Navigate to={profile.role === "coach" ? "/coach" : "/client/today"} replace/>;
+  return <Navigate to={profile.role === "coach" ? "/coach" : "/client/journal"} replace/>;
 }
