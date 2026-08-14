@@ -32,6 +32,7 @@ export default function App() {
 
                   <Route element={<RequireRole role="client" />}>
                     <Route path="/client/:tab" element={<ClientApp />} />
+                    <Route path="/client/:tab/:section" element={<ClientApp />} />
                   </Route>
                 </Route>
 

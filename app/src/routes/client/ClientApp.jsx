@@ -2,11 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase as supabaseClient } from "../../lib/supabaseClient";
-import { HABITS, DEFAULT_GOALS, DEFAULT_PRIVACY } from "../../lib/constants";
+import { DEFAULT_PRIVACY } from "../../lib/constants";
 import { today, dayNames, monthNames, getWeekDays } from "../../lib/dates";
 import { JOURNAL_SECTIONS, getJournalCompletion, getJournalStreak, getJournalSectionRate, getJournalNumericAvg } from "../../lib/journal";
 import { getAccessInfo, countMessagesThisWeek } from "../../lib/access";
-import { fetchInsights } from "../../lib/insights";
 import { Toast, useToast } from "../../components/Toast";
 import { MessageLimitBar } from "../../components/MessageLimitBar";
 import { AccessExpiredScreen, GraceBanner, ViewOnlyBanner } from "../../components/AccessScreens";
@@ -19,8 +18,9 @@ import { QUIZZES } from "../../lib/quizzes";
 export function ClientApp() {
   const { profile: supabaseProfile, logout } = useAuth();
   const navigate = useNavigate();
-  const { tab = "journal" } = useParams();
+  const { tab = "journal", section = "goals" } = useParams();
   const setTab = (id) => navigate(`/client/${id}`);
+  const setSection = (id) => navigate(`/client/settings/${id}`);
   const clientId = supabaseProfile.id;
 
   async function onLogout() {
@@ -51,9 +51,8 @@ export function ClientApp() {
   const [messagesLoading, setMessagesLoading] = useState(true);
   const [msgInput, setMsgInput] = useState("");
   const [msgChars, setMsgChars] = useState(0);
-  const [goals] = useState(DEFAULT_GOALS);
-  const [insights, setInsights] = useState(null);
-  const [loadingInsights, setLoadingInsights] = useState(false);
+  const [goals, setGoals] = useState({ primaryGoal:"", why:"", sleepTarget:8, waterTarget:8, movementTarget:30, weeklyCheckIn:"Every Monday" });
+  const [savingGoals, setSavingGoals] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [privacy, setPrivacy] = useState(DEFAULT_PRIVACY);
   const [quizResults, setQuizResults] = useState({});
@@ -117,11 +116,54 @@ export function ClientApp() {
     })));
   }
 
-  async function loadInsights() {
-    setLoadingInsights(true); setTab("insights");
-    try { const ins=await fetchInsights(client.name,journalData,goals); setInsights(ins); }
-    catch { setInsights([{type:"tip",emoji:"💡",label:"Keep Going",text:"You're building great habits! Stay consistent and your coach will share personalized feedback soon."}]); }
-    setLoadingInsights(false);
+  async function saveGoals() {
+    setSavingGoals(true);
+    if (supabaseClient && clientId && clientId.length > 10) {
+      const { error } = await supabaseClient.from("goals").upsert({
+        user_id: clientId,
+        primary_goal: goals.primaryGoal || "",
+        why: goals.why || "",
+        sleep_target: goals.sleepTarget,
+        water_target: goals.waterTarget,
+        movement_target: goals.movementTarget,
+        weekly_check_in: goals.weeklyCheckIn,
+      }, { onConflict: "user_id" });
+      if (error) {
+        console.error("Goals save error:", error);
+        showToast("Your goals didn't save — please try again.");
+      } else {
+        showToast("Goals saved!", "success");
+      }
+    }
+    setSavingGoals(false);
+  }
+
+  async function addCustomHabit() {
+    if (!newHabitName.trim() || !supabaseClient || !clientId || clientId.length <= 10) return;
+    const name = newHabitName.trim();
+    setNewHabitName("");
+    const { data, error } = await supabaseClient
+      .from("custom_habits")
+      .insert({ user_id: clientId, name, icon: "⭐", unit: "times", target: 1 })
+      .select()
+      .single();
+    if (error) {
+      console.error("Custom habit save error:", error);
+      showToast("That habit didn't save — please try again.");
+      return;
+    }
+    setCustomHabits(h => [...h, { id: data.id, label: data.name, icon: data.icon, unit: data.unit, target: data.target }]);
+  }
+
+  async function deleteCustomHabit(id) {
+    setCustomHabits(h => h.filter(x => x.id !== id));
+    if (supabaseClient && clientId && clientId.length > 10) {
+      const { error } = await supabaseClient.from("custom_habits").delete().eq("id", id);
+      if (error) {
+        console.error("Custom habit delete error:", error);
+        showToast("That habit didn't delete — please try again.");
+      }
+    }
   }
 
   useEffect(() => {
@@ -181,6 +223,39 @@ export function ClientApp() {
         quizzes.forEach(row => { q[row.quiz_type] = { primaryStyle: row.primary_style, scores: row.scores }; });
         setQuizResults(q);
       }
+
+      const { data: goalsRow } = await supabaseClient
+        .from("goals")
+        .select("*")
+        .eq("user_id", clientId)
+        .maybeSingle();
+
+      if (goalsRow) {
+        setGoals({
+          primaryGoal:    goalsRow.primary_goal || "",
+          why:             goalsRow.why || "",
+          sleepTarget:     goalsRow.sleep_target ?? 8,
+          waterTarget:     goalsRow.water_target ?? 8,
+          movementTarget:  goalsRow.movement_target ?? 30,
+          weeklyCheckIn:   goalsRow.weekly_check_in || "Every Monday",
+        });
+      }
+
+      const { data: customRows } = await supabaseClient
+        .from("custom_habits")
+        .select("*")
+        .eq("user_id", clientId)
+        .order("created_at", { ascending: true });
+
+      if (customRows) {
+        setCustomHabits(customRows.map(row => ({
+          id: row.id,
+          label: row.name,
+          icon: row.icon || "⭐",
+          unit: row.unit || "times",
+          target: row.target ?? 1,
+        })));
+      }
     }
 
     loadData();
@@ -234,13 +309,16 @@ export function ClientApp() {
 
   const tabs = [
     {id:"journal",label:"📓 Journal"},
-    {id:"history",label:"History"},
-    {id:"insights",label:"✨ Insights"},
-    {id:"goals",label:"My Goals"},
     {id:"chat",label:"Messages"},
-    {id:"custom",label:"My Habits"},
-    {id:"profile",label:"🧠 My Profile"},
+    {id:"history",label:"History"},
+    {id:"settings",label:"⚙️ Settings"},
+  ];
+
+  const settingsTabs = [
+    {id:"goals",label:"Goals"},
+    {id:"habits",label:"Habits"},
     {id:"privacy",label:"🔒 Privacy"},
+    {id:"profile",label:"🧠 My Profile"},
   ];
 
   return (
@@ -259,7 +337,7 @@ export function ClientApp() {
           <div className="nav-tabs" style={{display:"flex",gap:2,overflowX:"auto"}}>
             {tabs.map(t=>(
               <button key={t.id} className={`nav-tab${tab===t.id?" active":""}`}
-                onClick={()=>{ if(t.id==="insights"&&!insights) loadInsights(); else setTab(t.id); }}>
+                onClick={()=>setTab(t.id)}>
                 {t.label}
               </button>
             ))}
@@ -331,46 +409,6 @@ export function ClientApp() {
           </div>
         </>}
 
-        {tab==="insights" && <>
-          <div className="section-title" style={{marginBottom:6}}>AI Coaching Insights ✨</div>
-          <div style={{fontSize:13,color:"var(--light)",marginBottom:22}}>Personalized analysis of your habits this week</div>
-          {loadingInsights && (
-            <div className="ai-loading">
-              <div className="dot-pulse"><span/><span/><span/></div>
-              Analyzing your habits…
-            </div>
-          )}
-          {insights && insights.map((ins,i)=>(
-            <div key={i} className={`insight-card ${ins.type}`} style={{animationDelay:`${i*0.1}s`}}>
-              <div className="insight-type">{ins.emoji} {ins.label}</div>
-              <div className="insight-text">{ins.text}</div>
-            </div>
-          ))}
-          {!loadingInsights && insights && (
-            <button className="btn-sm-outline" style={{marginTop:8}} onClick={loadInsights}>Refresh insights ↺</button>
-          )}
-        </>}
-
-        {tab==="goals" && <>
-          <div className="section-title" style={{marginBottom:22}}>My Goals</div>
-          <div className="goal-card">
-            <div style={{fontSize:13,color:"var(--sage)",fontWeight:600,marginBottom:12}}>🎯 Current Goal</div>
-            <div style={{fontSize:17,color:"var(--dark)",fontWeight:500,lineHeight:1.5}}>{goals.primaryGoal}</div>
-          </div>
-          <div className="card">
-            <div className="section-label">Daily Targets</div>
-            {HABITS.map(h=>(
-              <div className="goal-item" key={h.id}>
-                <span className="goal-icon">{h.icon}</span>
-                <div>
-                  <div className="goal-label">{h.label}</div>
-                  <div className="goal-val">{h.target} {h.unit} per day</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>}
-
         {tab==="chat" && <>
           <div className="section-title" style={{marginBottom:18}}>Messages with your Coach</div>
           <div className="card" style={{padding:0}}>
@@ -418,97 +456,126 @@ export function ClientApp() {
           </div>
         </>}
 
-        {tab==="custom" && <>
-          <div className="section-title" style={{marginBottom:18}}>Custom Habits</div>
-          <div className="card" style={{marginBottom:18}}>
-            <div className="section-label">Add a New Habit</div>
-            <div style={{display:"flex",gap:10,alignItems:"center"}}>
-              <input className="text-input" placeholder="Habit name (e.g. Journaling)" value={newHabitName} onChange={e=>setNewHabitName(e.target.value)} style={{flex:1}}/>
-              <button className="btn-sm" onClick={()=>{
-                if(!newHabitName.trim()) return;
-                setCustomHabits(h=>[...h,{id:`c_${Date.now()}`,label:newHabitName.trim(),icon:"⭐",unit:"times",target:1,color:"#D4A853"}]);
-                setNewHabitName("");
-              }}>+ Add</button>
-            </div>
+        {tab==="settings" && <>
+          <div className="section-title" style={{marginBottom:18}}>Settings</div>
+          <div className="tabs" style={{marginBottom:22}}>
+            {settingsTabs.map(t=>(
+              <button key={t.id} className={`tab${section===t.id?" active":""}`} onClick={()=>setSection(t.id)}>{t.label}</button>
+            ))}
           </div>
-          {customHabits.length===0 && <div className="empty">No custom habits yet. Add one above!</div>}
-          {customHabits.map(h=>(
-            <div key={h.id} className="card-sm" style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
-              <span style={{fontSize:20}}>{h.icon}</span>
-              <span style={{fontSize:14,fontWeight:500}}>{h.label}</span>
-              <span style={{fontSize:12,color:"var(--light)",marginLeft:"auto"}}>{h.unit} / day</span>
-            </div>
-          ))}
-        </>}
 
-        {tab==="profile" && <>
-          <div className="greeting" style={{marginBottom:20}}>
-            <div className="greeting-title">My <em>Profile</em> 🧠</div>
-            <div style={{fontSize:13,color:"var(--light)",marginTop:4}}>Two quick quizzes that help your coach tailor how she works with you</div>
-          </div>
-          {activeQuiz ? (
-            <div className="card">
-              <button className="btn-sm-outline" style={{marginBottom:18}} onClick={()=>setActiveQuiz(null)}>← Back to My Profile</button>
-              <Quiz
-                key={activeQuiz}
-                quizKey={activeQuiz}
-                mode="standalone"
-                doneLabel="Done"
-                onDone={(result)=>{
-                  setQuizResults(q=>({...q,[activeQuiz]:result}));
-                  setActiveQuiz(null);
-                }}
-              />
+          {section==="goals" && <>
+            <div className="card" style={{marginBottom:18}}>
+              <div className="section-label">Primary Goal</div>
+              <input className="text-input" style={{marginBottom:14}} placeholder="e.g. Lose weight, sleep better, reduce stress…"
+                value={goals.primaryGoal} onChange={e=>setGoals(g=>({...g,primaryGoal:e.target.value}))}/>
+              <div className="section-label">What motivates you?</div>
+              <textarea className="textarea" placeholder="e.g. I want to have more energy for my kids…"
+                value={goals.why} onChange={e=>setGoals(g=>({...g,why:e.target.value}))}/>
             </div>
-          ) : (
-            <>
-              {Object.values(QUIZZES).map(qd=>{
-                const saved = quizResults[qd.quizType];
-                return (
-                  <div className="quiz-summary-card" key={qd.quizType}>
-                    <div>
-                      <div style={{fontSize:15,fontWeight:600,color:"var(--dark)",marginBottom:4}}>{qd.title}</div>
-                      {saved
-                        ? <div style={{fontSize:13,color:"var(--terra)",fontWeight:500}}>
-                            Your style: {saved.primaryStyle.split(",").map(k=>qd.profiles[k]?.label).join(" & ")}
-                          </div>
-                        : <div style={{fontSize:13,color:"var(--light)"}}>Not taken yet — {qd.questions.length} quick questions</div>
-                      }
+            <button className="btn-sm" disabled={savingGoals} onClick={saveGoals}>{savingGoals?"Saving…":"Save Goals"}</button>
+          </>}
+
+          {section==="habits" && <>
+            <div className="card" style={{marginBottom:18}}>
+              <div className="section-label">Daily Targets</div>
+              <div className="two-col">
+                <div>
+                  <div className="field-label" style={{marginBottom:4}}>Sleep (hrs)</div>
+                  <input className="text-input" type="number" min="0" max="24" value={goals.sleepTarget} onChange={e=>setGoals(g=>({...g,sleepTarget:Number(e.target.value)}))}/>
+                </div>
+                <div>
+                  <div className="field-label" style={{marginBottom:4}}>Water (glasses)</div>
+                  <input className="text-input" type="number" min="0" max="30" value={goals.waterTarget} onChange={e=>setGoals(g=>({...g,waterTarget:Number(e.target.value)}))}/>
+                </div>
+              </div>
+              <div style={{marginTop:12}}>
+                <div className="field-label" style={{marginBottom:4}}>Movement (min/day)</div>
+                <input className="text-input" type="number" min="0" max="300" value={goals.movementTarget} onChange={e=>setGoals(g=>({...g,movementTarget:Number(e.target.value)}))}/>
+              </div>
+              <button className="btn-sm" style={{marginTop:14}} disabled={savingGoals} onClick={saveGoals}>{savingGoals?"Saving…":"Save Targets"}</button>
+            </div>
+
+            <div className="section-title" style={{marginBottom:18,fontSize:20}}>Custom Habits</div>
+            <div className="card" style={{marginBottom:18}}>
+              <div className="section-label">Add a New Habit</div>
+              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                <input className="text-input" placeholder="Habit name (e.g. Journaling)" value={newHabitName} onChange={e=>setNewHabitName(e.target.value)} style={{flex:1}}/>
+                <button className="btn-sm" onClick={addCustomHabit}>+ Add</button>
+              </div>
+            </div>
+            {customHabits.length===0 && <div className="empty">No custom habits yet. Add one above!</div>}
+            {customHabits.map(h=>(
+              <div key={h.id} className="card-sm" style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+                <span style={{fontSize:20}}>{h.icon}</span>
+                <span style={{fontSize:14,fontWeight:500}}>{h.label}</span>
+                <span style={{fontSize:12,color:"var(--light)",marginLeft:"auto"}}>{h.unit} / day</span>
+                <button onClick={()=>deleteCustomHabit(h.id)} style={{background:"none",border:"none",color:"var(--light)",cursor:"pointer",fontSize:16,lineHeight:1,padding:0}}>×</button>
+              </div>
+            ))}
+          </>}
+
+          {section==="privacy" && <>
+            <PrivacySettings privacy={privacy} onChange={async (newPrivacy) => {
+              setPrivacy(newPrivacy);
+              if (supabaseClient && clientId && clientId.length > 10) {
+                const { error } = await supabaseClient
+                  .from("privacy_settings")
+                  .upsert({
+                    user_id:              clientId,
+                    coach_access_enabled: newPrivacy.coachAccessEnabled,
+                    share_habits:         newPrivacy.shareHabits,
+                    share_journal:        newPrivacy.shareJournal,
+                    share_food_diary:     newPrivacy.shareFoodDiary,
+                    share_medications:    newPrivacy.shareMedications,
+                  }, { onConflict: "user_id" });
+                if (error) {
+                  console.error("Privacy save error:", error);
+                  showToast("Your privacy settings didn't save — please try again.");
+                }
+              }
+            }} />
+          </>}
+
+          {section==="profile" && <>
+            {activeQuiz ? (
+              <div className="card">
+                <button className="btn-sm-outline" style={{marginBottom:18}} onClick={()=>setActiveQuiz(null)}>← Back to My Profile</button>
+                <Quiz
+                  key={activeQuiz}
+                  quizKey={activeQuiz}
+                  mode="standalone"
+                  doneLabel="Done"
+                  onDone={(result)=>{
+                    setQuizResults(q=>({...q,[activeQuiz]:result}));
+                    setActiveQuiz(null);
+                  }}
+                />
+              </div>
+            ) : (
+              <>
+                {Object.values(QUIZZES).map(qd=>{
+                  const saved = quizResults[qd.quizType];
+                  return (
+                    <div className="quiz-summary-card" key={qd.quizType}>
+                      <div>
+                        <div style={{fontSize:15,fontWeight:600,color:"var(--dark)",marginBottom:4}}>{qd.title}</div>
+                        {saved
+                          ? <div style={{fontSize:13,color:"var(--terra)",fontWeight:500}}>
+                              Your style: {saved.primaryStyle.split(",").map(k=>qd.profiles[k]?.label).join(" & ")}
+                            </div>
+                          : <div style={{fontSize:13,color:"var(--light)"}}>Not taken yet — {qd.questions.length} quick questions</div>
+                        }
+                      </div>
+                      <button className={saved?"btn-sm-outline":"btn-sm"} onClick={()=>setActiveQuiz(qd.quizType)}>
+                        {saved?"View / Retake":"Take Quiz →"}
+                      </button>
                     </div>
-                    <button className={saved?"btn-sm-outline":"btn-sm"} onClick={()=>setActiveQuiz(qd.quizType)}>
-                      {saved?"View / Retake":"Take Quiz →"}
-                    </button>
-                  </div>
-                );
-              })}
-            </>
-          )}
-        </>}
-
-        {tab==="privacy" && <>
-          <div className="greeting" style={{marginBottom:20}}>
-            <div className="greeting-title">Privacy <em>Settings</em> 🔒</div>
-            <div style={{fontSize:13,color:"var(--light)",marginTop:4}}>Control what your coach can see — you're always in charge of your data</div>
-          </div>
-          <PrivacySettings privacy={privacy} onChange={async (newPrivacy) => {
-          setPrivacy(newPrivacy);
-          if (supabaseClient && clientId && clientId.length > 10) {
-            const { error } = await supabaseClient
-              .from("privacy_settings")
-              .upsert({
-                user_id:              clientId,
-                coach_access_enabled: newPrivacy.coachAccessEnabled,
-                share_habits:         newPrivacy.shareHabits,
-                share_journal:        newPrivacy.shareJournal,
-                share_food_diary:     newPrivacy.shareFoodDiary,
-                share_medications:    newPrivacy.shareMedications,
-              }, { onConflict: "user_id" });
-            if (error) {
-              console.error("Privacy save error:", error);
-              showToast("Your privacy settings didn't save — please try again.");
-            }
-          }
-        }} />
+                  );
+                })}
+              </>
+            )}
+          </>}
         </>}
 
         {tab==="journal" && <>
