@@ -2,14 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabaseClient";
-import { HABITS, ACCESS_LEVELS, DEFAULT_PRIVACY, DEFAULT_REMINDERS } from "../../lib/constants";
-import { today, todayKey, dayNames, monthNames, getWeekDays, getCompletion, getStreak } from "../../lib/dates";
+import { ACCESS_LEVELS, DEFAULT_PRIVACY } from "../../lib/constants";
+import { today, todayKey, dayNames, monthNames, getWeekDays } from "../../lib/dates";
 import { JOURNAL_SECTIONS, getJournalCompletion, getJournalStreak } from "../../lib/journal";
 import { getDaysRemaining, countMessagesThisWeek } from "../../lib/access";
-import { fetchInsights } from "../../lib/insights";
 import { getAggregate } from "../../lib/report";
 import { Toast, useToast } from "../../components/Toast";
-import { Toggle } from "../../components/Toggle";
 import { DownloadModal } from "../../components/DownloadModal";
 import { JournalView } from "../../components/JournalView";
 import { QuizResults } from "../../components/Quiz/QuizResults";
@@ -23,9 +21,9 @@ export function CoachApp() {
 
   const tab = location.pathname === "/coach/reports" ? "reports" : "clients";
   const selectedClient = params.clientId || null;
-  const clientTab = params.clientTab || "overview";
+  const clientTab = params.clientTab || "journal";
   const setTab = (id) => navigate(id === "reports" ? "/coach/reports" : "/coach");
-  const setSelectedClient = (id) => navigate(id ? `/coach/clients/${id}/overview` : "/coach");
+  const setSelectedClient = (id) => navigate(id ? `/coach/clients/${id}/journal` : "/coach");
   const setClientTab = (id) => navigate(`/coach/clients/${selectedClient}/${id}`);
 
   async function onLogout() {
@@ -35,21 +33,18 @@ export function CoachApp() {
 
   const [clients, setClients] = useState([]);
   const [loadingClients, setLoadingClients] = useState(true);
-  const [allClientData] = useState({});
+  const [allClientData, setAllClientData] = useState({});
   const [coachNotes, setCoachNotes] = useState({});
   const [clientAccessLevels, setClientAccessLevels] = useState({});
   const [clientJournals, setClientJournals] = useState({});
   const [clientPrivacy, setClientPrivacy] = useState({});
   const [clientQuizzes, setClientQuizzes] = useState({});
   const [quizBadges, setQuizBadges] = useState({});
+  const [clientGoals, setClientGoals] = useState({});
+  const [clientAgreements, setClientAgreements] = useState({});
   const [messages, setMessages] = useState({});
   const [msgInput, setMsgInput] = useState("");
-  const [goals, setGoals] = useState({});
-  const [reminders, setReminders] = useState({});
-  const [editGoals, setEditGoals] = useState(false);
   const [newNote, setNewNote] = useState("");
-  const [insights, setInsights] = useState({});
-  const [loadingInsights, setLoadingInsights] = useState(false);
   const [reportPeriod, setReportPeriod] = useState("weekly");
   const [showCoachDownload, setShowCoachDownload] = useState(false);
   const { toast, showToast, clearToast } = useToast();
@@ -111,6 +106,45 @@ export function CoachApp() {
         setQuizBadges(badges);
       }
 
+      // Respects each client's own privacy choice, same gate used in the per-client
+      // detail view — a client with coach visibility or shareHabits off contributes
+      // no data here, so their list pills correctly show 0/hidden rather than leaking.
+      if (data && data.length) {
+        const ids = data.map(p => p.id);
+        const { data: privRows } = await supabase
+          .from("privacy_settings").select("*").in("user_id", ids);
+        const privMap = {};
+        (privRows || []).forEach(r => { privMap[r.user_id] = r; });
+        const sharableIds = ids.filter(id => {
+          const r = privMap[id];
+          return (r?.coach_access_enabled ?? true) && (r?.share_habits ?? true);
+        });
+
+        if (sharableIds.length) {
+          const { data: journalRows } = await supabase
+            .from("journal_entries").select("*").in("user_id", sharableIds);
+          const grouped = {};
+          (journalRows || []).forEach(row => {
+            grouped[row.user_id] = grouped[row.user_id] || {};
+            grouped[row.user_id][row.entry_date] = {
+              sleepHours:  parseFloat(row.sleep_hours)  || 0,
+              waterGlasses: parseInt(row.water_glasses) || 0,
+              intention:   row.intention   || "",
+              reflection:  row.reflection  || "",
+              gratitude:   [row.gratitude_1||"", row.gratitude_2||"", row.gratitude_3||""],
+              medications: row.medications || "",
+              movementCardio:     row.movement_cardio     || "",
+              movementWeights:    row.movement_weights    || "",
+              movementStretching: row.movement_stretching || "",
+              morning:   { food: row.morning_food||"" },
+              afternoon: { food: row.afternoon_food||"" },
+              evening:   { food: row.evening_food||"" },
+            };
+          });
+          setAllClientData(grouped);
+        }
+      }
+
       setLoadingClients(false);
     }
     fetchClients();
@@ -124,8 +158,8 @@ export function CoachApp() {
   const scPrivacy   = selectedClient ? (clientPrivacy[selectedClient] || DEFAULT_PRIVACY) : DEFAULT_PRIVACY;
   const scMessages  = messages[selectedClient] || [];
   const scNotes     = selectedClient ? (coachNotes[selectedClient] || []) : [];
-  const scGoals     = selectedClient ? (goals[selectedClient] || null) : null;
-  const scRem       = selectedClient ? (reminders[selectedClient] || DEFAULT_REMINDERS) : null;
+  const scGoals     = selectedClient ? (clientGoals[selectedClient] || null) : null;
+  const scAgreement = selectedClient ? (clientAgreements[selectedClient] || null) : null;
   const scStreak    = scData ? getJournalStreak(scData) : 0;
   const scWeeklyMsgs = selectedClient ? countMessagesThisWeek(messages[selectedClient], selectedClient) : 0;
   const scQuizzes   = selectedClient ? (clientQuizzes[selectedClient] || {}) : {};
@@ -161,30 +195,24 @@ export function CoachApp() {
     setTimeout(()=>{if(chatRef.current) chatRef.current.scrollTop=chatRef.current.scrollHeight;},50);
   }
 
-  function addNote() {
-    if(!newNote.trim()||!selectedClient) return;
-    const note={text:newNote.trim(),date:new Date().toLocaleDateString()};
-    setCoachNotes(n=>({...n,[selectedClient]:[note,...(n[selectedClient]||[])]}));
+  async function addNote() {
+    if(!newNote.trim()||!selectedClient||!coachProfile?.id) return;
+    const text = newNote.trim();
     setNewNote("");
-  }
-
-  async function loadClientInsights(cid) {
-    setLoadingInsights(true);
-    const client=CLIENTS.find(c=>c.id===cid);
-    try {
-      const ins=await fetchInsights(client.name,allClientData[cid],goals[cid]);
-      setInsights(i=>({...i,[cid]:ins}));
-    } catch {
-      setInsights(i=>({...i,[cid]:[{type:"tip",emoji:"💡",label:"Keep Going",text:"This client is building consistent habits. Check in to provide personalized encouragement."}]}));
+    const { data, error } = await supabase.from("coach_notes").insert({
+      client_id: selectedClient,
+      coach_id: coachProfile.id,
+      note: text,
+    }).select().single();
+    if (error) {
+      console.error("Note save error:", error);
+      showToast("Your note didn't save — please try again.");
+      return;
     }
-    setLoadingInsights(false);
-  }
-
-  function updateGoal(field, val) {
-    setGoals(g=>({...g,[selectedClient]:{...g[selectedClient],[field]:val}}));
-  }
-  function updateReminder(field, val) {
-    setReminders(r=>({...r,[selectedClient]:{...r[selectedClient],[field]:val}}));
+    setCoachNotes(n => ({...n, [selectedClient]: [
+      { text: data.note, date: new Date(data.created_at).toLocaleDateString() },
+      ...(n[selectedClient]||[]),
+    ]}));
   }
 
   // ── COACH: Load client data when a client is selected ────────────
@@ -305,10 +333,44 @@ export function CoachApp() {
       setClientQuizzes(prev => ({ ...prev, [selectedClient]: q }));
     }
 
+    async function loadGoals() {
+      const { data } = await supabase
+        .from("goals").select("*")
+        .eq("user_id", selectedClient).maybeSingle();
+      if (data) {
+        setClientGoals(prev => ({ ...prev, [selectedClient]: {
+          primaryGoal: data.primary_goal || "",
+          why: data.why || "",
+          sleepTarget: data.sleep_target ?? 8,
+          waterTarget: data.water_target ?? 8,
+          movementTarget: data.movement_target ?? 30,
+        }}));
+      }
+    }
+
+    async function loadAgreement() {
+      const { data } = await supabase
+        .from("agreements").select("*")
+        .eq("user_id", selectedClient)
+        .order("signed_at", { ascending: false })
+        .limit(1).maybeSingle();
+      setClientAgreements(prev => ({ ...prev, [selectedClient]: data || null }));
+    }
+
+    async function loadNotes() {
+      const { data } = await supabase
+        .from("coach_notes").select("*")
+        .eq("client_id", selectedClient)
+        .order("created_at", { ascending: false });
+      setCoachNotes(prev => ({ ...prev, [selectedClient]: (data || []).map(row => ({
+        text: row.note, date: new Date(row.created_at).toLocaleDateString(),
+      })) }));
+    }
+
     async function loadAll() {
       const privacy = await loadPrivacy();
       if (cancelled) return;
-      await Promise.all([loadHabits(privacy), loadJournal(privacy), loadQuizzes()]);
+      await Promise.all([loadHabits(privacy), loadJournal(privacy), loadQuizzes(), loadGoals(), loadAgreement(), loadNotes()]);
       if (cancelled) return;
       await loadMessages();
     }
@@ -336,15 +398,10 @@ export function CoachApp() {
   );
 
   const clientTabs = [
-    {id:"overview",label:"Overview"},
-    {id:"access",label:"🔑 Access"},
     {id:"journal",label:"📓 Journal"},
-    {id:"insights",label:"✨ Insights"},
-    {id:"goals",label:"Goals"},
-    {id:"quizzes",label:"🧠 Quizzes"},
-    {id:"reminders",label:"Reminders"},
-    {id:"chat",label:"Messages"},
+    {id:"settings",label:"⚙️ Settings"},
     {id:"notes",label:"Notes"},
+    {id:"chat",label:"Messages"},
   ];
 
   if(selectedClient && sc) return (
@@ -391,124 +448,6 @@ export function CoachApp() {
           />
         )}
 
-        {clientTab==="overview" && <>
-          <div className="card" style={{marginBottom:18}}>
-            <div className="section-label">7-Day Journal Progress</div>
-            {JOURNAL_SECTIONS.map(s=>(
-              <div className="week-row" key={s.id}>
-                <div className="week-habit-label">{s.icon} {s.label}</div>
-                <div className="week-dots">
-                  {weekDays.map(({key,label})=>{
-                    const done = scData?.[key] ? s.check(scData[key]) : false;
-                    const pct = done ? 100 : 0;
-                    return <div key={key} className="wdot" style={{background:pct>=80?s.color:pct>=40?s.color+"99":"rgba(61,125,107,.08)",color:pct>=40?"#fff":"var(--light)",fontSize:9}}>{pct}%</div>;
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>}
-
-        {clientTab==="insights" && <>
-          <div className="section-label" style={{marginBottom:18}}>AI-Powered Coaching Insights for {sc.name}</div>
-          {loadingInsights && <div className="ai-loading"><div className="dot-pulse"><span/><span/><span/></div>Analyzing…</div>}
-          {insights[selectedClient] && insights[selectedClient].map((ins,i)=>(
-            <div key={i} className={`insight-card ${ins.type}`}>
-              <div className="insight-type">{ins.emoji} {ins.label}</div>
-              <div className="insight-text">{ins.text}</div>
-            </div>
-          ))}
-          {!insights[selectedClient] && !loadingInsights && (
-            <button className="btn-sm" onClick={()=>loadClientInsights(selectedClient)}>Generate Insights ✨</button>
-          )}
-          {insights[selectedClient] && !loadingInsights && (
-            <button className="btn-sm-outline" style={{marginTop:8}} onClick={()=>loadClientInsights(selectedClient)}>Refresh ↺</button>
-          )}
-        </>}
-
-        {clientTab==="goals" && <>
-          <div className="card">
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
-              <div className="section-label" style={{margin:0}}>Client Goals</div>
-              <button className="btn-sm-outline" onClick={()=>setEditGoals(e=>!e)}>{editGoals?"Save":"Edit"}</button>
-            </div>
-            {editGoals ? <>
-              {[{f:"primaryGoal",l:"Primary Goal"},{f:"weeklyCheckIn",l:"Weekly Check-In"},{f:"sleepTarget",l:"Sleep Target (hrs)"},{f:"waterTarget",l:"Water Target (glasses)"},{f:"exerciseTarget",l:"Exercise Target (min)"}].map(({f,l})=>(
-                <div className="goal-edit-row" key={f}>
-                  <div className="goal-edit-label">{l}</div>
-                  <input className="goal-input-sm" value={scGoals?.[f]||""} onChange={e=>updateGoal(f,e.target.value)}/>
-                </div>
-              ))}
-              <div className="goal-edit-row" style={{flexDirection:"column",alignItems:"flex-start",gap:6}}>
-                <div className="goal-edit-label">Coach Notes</div>
-                <textarea className="textarea" style={{width:"100%"}} value={scGoals?.notes||""} onChange={e=>updateGoal("notes",e.target.value)}/>
-              </div>
-            </> : <>
-              {[{icon:"🎯",label:"Primary Goal",f:"primaryGoal"},{icon:"📅",label:"Check-In",f:"weeklyCheckIn"},{icon:"🌙",label:"Sleep Target",f:"sleepTarget",suf:"hrs"},{icon:"💧",label:"Water Target",f:"waterTarget",suf:"glasses"},{icon:"🏃",label:"Exercise Target",f:"exerciseTarget",suf:"min"}].map(({icon,label,f,suf})=>(
-                <div className="goal-item" key={f}>
-                  <span className="goal-icon">{icon}</span>
-                  <div><div className="goal-label">{label}</div><div className="goal-val">{scGoals?.[f]||"—"}{suf?" "+suf:""}</div></div>
-                </div>
-              ))}
-            </>}
-          </div>
-        </>}
-
-        {clientTab==="quizzes" && <>
-          <div className="section-label" style={{marginBottom:18}}>{sc.name.split(" ")[0]}'s Quiz Results</div>
-          {Object.values(QUIZZES).map(qd => {
-            const saved = scQuizzes[qd.quizType];
-            return (
-              <div className="card" style={{marginBottom:16}} key={qd.quizType}>
-                {saved ? (
-                  <QuizResults
-                    quizDef={qd}
-                    scores={saved.scores}
-                    primaryStyle={saved.primaryStyle}
-                    totalQuestions={qd.questions.length}
-                    readOnly
-                  />
-                ) : (
-                  <div className="empty">{sc.name.split(" ")[0]} hasn't taken the {qd.title} quiz yet.</div>
-                )}
-              </div>
-            );
-          })}
-        </>}
-
-        {clientTab==="reminders" && scRem && <>
-          <div className="card">
-            <div className="section-label">Reminder Settings for {sc.name}</div>
-            <div className="toggle-row">
-              <div><div className="toggle-label">Email Reminders</div><div className="toggle-sub">{sc.email}</div></div>
-              <Toggle checked={scRem.email} onChange={v=>updateReminder("email",v)}/>
-            </div>
-            <div className="toggle-row">
-              <div><div className="toggle-label">SMS Reminders</div><div className="toggle-sub">{sc.phone}</div></div>
-              <Toggle checked={scRem.sms} onChange={v=>updateReminder("sms",v)}/>
-            </div>
-            <div className="toggle-row">
-              <div><div className="toggle-label">Morning Reminder</div></div>
-              <input className="time-input" type="time" value={scRem.morningTime} onChange={e=>updateReminder("morningTime",e.target.value)}/>
-            </div>
-            <div className="toggle-row">
-              <div><div className="toggle-label">Evening Reminder</div></div>
-              <input className="time-input" type="time" value={scRem.eveningTime} onChange={e=>updateReminder("eveningTime",e.target.value)}/>
-            </div>
-            <div style={{marginTop:18}}>
-              <div className="section-label">Habits to Remind</div>
-              <div className="checkbox-group" style={{marginTop:8}}>
-                {HABITS.map(h=>(
-                  <button key={h.id} className={`checkbox-tag${scRem.habits.includes(h.id)?" sel":""}`}
-                    onClick={()=>updateReminder("habits",scRem.habits.includes(h.id)?scRem.habits.filter(x=>x!==h.id):[...scRem.habits,h.id])}>
-                    {h.icon} {h.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </>}
-
         {clientTab==="chat" && <>
           <div className="card" style={{padding:0}}>
             <div className="chat-wrap">
@@ -529,8 +468,43 @@ export function CoachApp() {
         </>}
 
         {clientTab==="notes" && <>
+          <div className="card" style={{marginBottom:18}}>
+            <div className="section-label">Onboarding Documents</div>
+            {scAgreement ? (
+              <div className="goal-item">
+                <span className="goal-icon">📋</span>
+                <div>
+                  <div className="goal-label">Client Services Agreement v{scAgreement.agreement_version}</div>
+                  <div className="goal-val">Signed by {scAgreement.signature_name} on {new Date(scAgreement.signed_at).toLocaleDateString()}</div>
+                </div>
+              </div>
+            ) : (
+              <div className="empty">{sc.name.split(" ")[0]} hasn't signed the agreement yet.</div>
+            )}
+          </div>
+
+          <div className="section-title" style={{marginBottom:18,fontSize:20}}>Quiz Results</div>
+          {Object.values(QUIZZES).map(qd => {
+            const saved = scQuizzes[qd.quizType];
+            return (
+              <div className="card" style={{marginBottom:16}} key={qd.quizType}>
+                {saved ? (
+                  <QuizResults
+                    quizDef={qd}
+                    scores={saved.scores}
+                    primaryStyle={saved.primaryStyle}
+                    totalQuestions={qd.questions.length}
+                    readOnly
+                  />
+                ) : (
+                  <div className="empty">{sc.name.split(" ")[0]} hasn't taken the {qd.title} quiz yet.</div>
+                )}
+              </div>
+            );
+          })}
+
+          <div className="section-title" style={{marginBottom:18,fontSize:20}}>Private Coach Notes</div>
           <div className="card">
-            <div className="section-label">Private Coach Notes</div>
             <div style={{marginBottom:16}}>
               {scNotes.length===0 && <div className="empty">No notes yet.</div>}
               {scNotes.map((n,i)=>(
@@ -545,7 +519,7 @@ export function CoachApp() {
           </div>
         </>}
 
-        {clientTab==="access" && (() => {
+        {clientTab==="settings" && (() => {
           const cAccess = clientAccessLevels[selectedClient] || {};
           const currentLevel = ACCESS_LEVELS[cAccess.accessLevel] || ACCESS_LEVELS.expired;
           const daysLeft = cAccess.accessLevel === "grace"
@@ -638,6 +612,33 @@ export function CoachApp() {
             </div>
             <div style={{fontSize:13,color:"var(--light)"}}>Read-only view — this is your client's private daily log</div>
           </div>
+          {scGoals && (
+            <div className="card" style={{marginBottom:18}}>
+              <div className="section-label">Goals & Targets</div>
+              <div className="goal-item">
+                <span className="goal-icon">🎯</span>
+                <div><div className="goal-label">Primary Goal</div><div className="goal-val">{scGoals.primaryGoal || "—"}</div></div>
+              </div>
+              {scGoals.why && (
+                <div className="goal-item">
+                  <span className="goal-icon">💭</span>
+                  <div><div className="goal-label">Why</div><div className="goal-val">{scGoals.why}</div></div>
+                </div>
+              )}
+              <div className="goal-item">
+                <span className="goal-icon">🌙</span>
+                <div><div className="goal-label">Sleep Target</div><div className="goal-val">{scGoals.sleepTarget} hrs</div></div>
+              </div>
+              <div className="goal-item">
+                <span className="goal-icon">💧</span>
+                <div><div className="goal-label">Water Target</div><div className="goal-val">{scGoals.waterTarget} glasses</div></div>
+              </div>
+              <div className="goal-item">
+                <span className="goal-icon">🏃</span>
+                <div><div className="goal-label">Movement Target</div><div className="goal-val">{scGoals.movementTarget} min</div></div>
+              </div>
+            </div>
+          )}
           {(scLocked || !scPrivacy.shareJournal)
             ? <LockedSection label="Journal & reflections" />
             : <JournalView
@@ -686,8 +687,8 @@ export function CoachApp() {
           )}
           {clients.map((c,i)=>{
             const h=allClientData[c.id]||{};
-            const streak=getStreak(h);
-            const todayPct=getCompletion(h[todayKey]);
+            const streak=getJournalStreak(h);
+            const todayPct=getJournalCompletion(h[todayKey]);
             return (
               <div key={c.id} className={`client-list-card${selectedClient===c.id?" sel":""}`} style={{animationDelay:`${i*0.08}s`}} onClick={()=>setSelectedClient(c.id)}>
                 <div className="cl-avatar">{c.avatar}</div>
@@ -712,13 +713,13 @@ export function CoachApp() {
                   </div>
                 </div>
                 <div className="cl-stats">
-                  <div style={{fontSize:13,color:"var(--light)",marginBottom:6}}>This week</div>
+                  <div style={{fontSize:13,color:"var(--light)",marginBottom:6}}>Today</div>
                   <div style={{display:"flex",gap:4}}>
-                    {HABITS.map(hab=>{
-                      const val=h[todayKey]?.[hab.id]||0;
-                      const pct=Math.min(100,Math.round((val/hab.target)*100));
-                      return <div key={hab.id} title={hab.label} style={{width:8,height:32,borderRadius:4,background:"rgba(61,125,107,.1)",display:"flex",alignItems:"flex-end",overflow:"hidden"}}>
-                        <div style={{width:"100%",height:`${pct}%`,background:hab.color,borderRadius:4,transition:"height .4s"}}/>
+                    {JOURNAL_SECTIONS.map(s=>{
+                      const done = h[todayKey] ? s.check(h[todayKey]) : false;
+                      const pct = done ? 100 : 0;
+                      return <div key={s.id} title={s.label} style={{width:8,height:32,borderRadius:4,background:"rgba(61,125,107,.1)",display:"flex",alignItems:"flex-end",overflow:"hidden"}}>
+                        <div style={{width:"100%",height:`${pct}%`,background:s.color,borderRadius:4,transition:"height .4s"}}/>
                       </div>;
                     })}
                   </div>

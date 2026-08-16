@@ -1,5 +1,5 @@
-import { JOURNAL_SECTIONS, getJournalNumericAvg, getJournalSectionRate } from "./journal";
-import { todayKey, getStreak, getCompletion } from "./dates";
+import { JOURNAL_SECTIONS, getJournalNumericAvg, getJournalSectionRate, getJournalStreak, getJournalCompletion } from "./journal";
+import { todayKey } from "./dates";
 
 export function generateClientReport(client, journalData) {
   const lines = [];
@@ -76,12 +76,6 @@ export function downloadTextFile(filename, text) {
   URL.revokeObjectURL(url);
 }
 
-// Was previously called from the coach Reports tab but never defined
-// anywhere in the codebase, so Reports crashed with a ReferenceError as
-// soon as it was opened. Built here from the same `allClientData` source
-// the client-list pills use (currently always {} - see the allClientData
-// dead-state note tracked for Phase 5), so avg/streak read 0 today and
-// will start reflecting real numbers once that gets fixed.
 export function getAggregate(clients, allClientData) {
   return clients.map(c => {
     const h = allClientData[c.id] || {};
@@ -89,8 +83,8 @@ export function getAggregate(clients, allClientData) {
       id: c.id,
       name: c.name,
       avatar: c.avatar,
-      streak: getStreak(h),
-      avg: getCompletion(h[todayKey]),
+      streak: getJournalStreak(h),
+      avg: getJournalCompletion(h[todayKey]),
     };
   });
 }

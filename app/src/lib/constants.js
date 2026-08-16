@@ -1,12 +1,3 @@
-// ─── DATA ────────────────────────────────────────────────────────────────────
-
-export const HABITS = [
-  { id: "sleep",     label: "Sleep",     icon: "🌙", unit: "hrs",     target: 8,  color: "#7C6FA0" },
-  { id: "water",     label: "Water",     icon: "💧", unit: "glasses", target: 8,  color: "#5BA4CF" },
-  { id: "exercise",  label: "Exercise",  icon: "🏃", unit: "min",     target: 30, color: "#E8A838" },
-  { id: "nutrition", label: "Nutrition", icon: "🥗", unit: "meals",   target: 3,  color: "#6BAE75" },
-];
-
 // ─── ACCESS LEVELS ───────────────────────────────────────────────────────────
 // active     = full app + messaging (during coaching program)
 // grace      = full app + messaging winding down (4 weeks post-program)
@@ -46,7 +37,4 @@ export const SUBSCRIPTION_PLANS = [
   },
 ];
 
-// Default values for real Supabase users
-export const DEFAULT_GOALS = { primaryGoal:"", weeklyCheckIn:"Every Monday", targetWeight:"", sleepTarget:"8", waterTarget:"8", exerciseTarget:"30", notes:"" };
-export const DEFAULT_REMINDERS = { email:true, sms:false, morningTime:"08:00", eveningTime:"20:00", habits:["sleep","water","exercise","nutrition","mood"] };
 export const DEFAULT_PRIVACY = { coachAccessEnabled:true, shareHabits:true, shareJournal:true, shareFoodDiary:true, shareMedications:true };
