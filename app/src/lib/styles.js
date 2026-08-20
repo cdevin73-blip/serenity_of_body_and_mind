@@ -49,6 +49,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--dark);
 .nav-tab{padding:7px 14px;border-radius:10px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--light);cursor:pointer;transition:all .2s;white-space:nowrap;}
 .nav-tab:hover{color:var(--dark);}
 .nav-tab.active{background:rgba(61,125,107,.1);color:var(--terra);}
+.unread-dot{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:20px;background:#E87D5B;color:#fff;font-size:10px;font-weight:700;line-height:16px;margin-left:6px;vertical-align:middle;}
 .nav-right{display:flex;align-items:center;gap:12px;}
 .nav-badge{font-size:12px;background:rgba(61,125,107,.1);color:var(--terra);padding:4px 12px;border-radius:20px;font-weight:600;}
 .nav-logout{font-size:13px;color:var(--light);cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;}

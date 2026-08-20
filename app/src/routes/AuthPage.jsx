@@ -11,16 +11,39 @@ export function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [resending, setResending] = useState(false);
   const { loadProfile } = useAuth();
   const navigate = useNavigate();
 
+  function isUnconfirmedEmailError(error) {
+    return error.code === "email_not_confirmed" ||
+      /email.*not.*confirmed/i.test(error.message || "");
+  }
+
   async function handleLogin(e) {
     e.preventDefault();
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setMessage(""); setNeedsConfirmation(false);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { setError(error.message); setLoading(false); return; }
+    if (error) {
+      if (isUnconfirmedEmailError(error)) {
+        setNeedsConfirmation(true);
+      } else {
+        setError(error.message);
+      }
+      setLoading(false);
+      return;
+    }
     await loadProfile(data.user);
     navigate("/");
+  }
+
+  async function handleResendConfirmation() {
+    setResending(true); setError("");
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    setResending(false);
+    if (error) { setError(error.message); return; }
+    setMessage("Confirmation email resent - check your inbox (and spam folder).");
   }
 
   async function handleSignup(e) {
@@ -63,6 +86,15 @@ export function AuthPage() {
             {error}
           </div>
         )}
+        {needsConfirmation && (
+          <div style={{background:"rgba(232,168,56,.1)",border:"1px solid rgba(232,168,56,.35)",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:13,color:"#8A6414",lineHeight:1.5}}>
+            <div style={{marginBottom:10}}>Almost there - please confirm your email before signing in. We sent a confirmation link to <strong>{email}</strong>; check your inbox (and spam folder).</div>
+            <button onClick={handleResendConfirmation} disabled={resending}
+              style={{background:"none",border:"1px solid rgba(138,100,20,.35)",borderRadius:8,padding:"6px 12px",color:"#8A6414",fontSize:12,cursor:"pointer",fontFamily:"var(--font)"}}>
+              {resending ? "Resending..." : "Resend confirmation email"}
+            </button>
+          </div>
+        )}
 
         {mode === "login" && (
           <>
@@ -75,11 +107,11 @@ export function AuthPage() {
               {loading ? "Signing in..." : "Sign In"}
             </button>
             <div style={{textAlign:"center",marginTop:16,display:"flex",flexDirection:"column",gap:8}}>
-              <button onClick={()=>{setMode("signup");setError("");setMessage("");}}
+              <button onClick={()=>{setMode("signup");setError("");setMessage("");setNeedsConfirmation(false);}}
                 style={{background:"none",border:"none",color:"var(--terra)",fontSize:13,cursor:"pointer",fontFamily:"var(--font)"}}>
                 New client? Create account
               </button>
-              <button onClick={()=>{setMode("reset");setError("");setMessage("");}}
+              <button onClick={()=>{setMode("reset");setError("");setMessage("");setNeedsConfirmation(false);}}
                 style={{background:"none",border:"none",color:"var(--light)",fontSize:12,cursor:"pointer",fontFamily:"var(--font)"}}>
                 Forgot password?
               </button>
@@ -100,7 +132,7 @@ export function AuthPage() {
               {loading ? "Creating account..." : "Create Account"}
             </button>
             <div style={{textAlign:"center",marginTop:16}}>
-              <button onClick={()=>{setMode("login");setError("");setMessage("");}}
+              <button onClick={()=>{setMode("login");setError("");setMessage("");setNeedsConfirmation(false);}}
                 style={{background:"none",border:"none",color:"var(--light)",fontSize:13,cursor:"pointer",fontFamily:"var(--font)"}}>
                 Already have an account? Sign in
               </button>
@@ -117,7 +149,7 @@ export function AuthPage() {
               {loading ? "Sending..." : "Send Reset Email"}
             </button>
             <div style={{textAlign:"center",marginTop:16}}>
-              <button onClick={()=>{setMode("login");setError("");setMessage("");}}
+              <button onClick={()=>{setMode("login");setError("");setMessage("");setNeedsConfirmation(false);}}
                 style={{background:"none",border:"none",color:"var(--light)",fontSize:13,cursor:"pointer",fontFamily:"var(--font)"}}>
                 Back to sign in
               </button>

@@ -43,6 +43,7 @@ export function CoachApp() {
   const [clientGoals, setClientGoals] = useState({});
   const [clientAgreements, setClientAgreements] = useState({});
   const [messages, setMessages] = useState({});
+  const [unreadCounts, setUnreadCounts] = useState({});
   const [msgInput, setMsgInput] = useState("");
   const [newNote, setNewNote] = useState("");
   const [reportPeriod, setReportPeriod] = useState("weekly");
@@ -150,6 +151,25 @@ export function CoachApp() {
     fetchClients();
   }, []);
 
+  // ── Unread message counts, per client, for the list badges & Messages sub-tab ──
+  useEffect(() => {
+    if (!coachProfile?.id) return;
+    let cancelled = false;
+    async function loadUnread() {
+      const { data } = await supabase.from("messages")
+        .select("sender_id")
+        .eq("receiver_id", coachProfile.id)
+        .is("read_at", null);
+      if (cancelled) return;
+      const counts = {};
+      (data || []).forEach(row => { counts[row.sender_id] = (counts[row.sender_id] || 0) + 1; });
+      setUnreadCounts(counts);
+    }
+    loadUnread();
+    const interval = setInterval(loadUnread, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [coachProfile?.id]);
+
   const weekDays = getWeekDays(7);
   const sc = clients.find(c=>c.id===selectedClient);
   const CLIENTS = clients;
@@ -188,7 +208,7 @@ export function CoachApp() {
     all.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
     setMessages(prev => ({...prev, [selectedClient]: all.map(m => ({
       id: m.id, from: m.sender_id === coachProfile.id ? "coach" : "client",
-      sender_id: m.sender_id, text: m.message, created_at: m.created_at,
+      sender_id: m.sender_id, text: m.message, created_at: m.created_at, read_at: m.read_at,
       time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
       date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
     }))}));
@@ -318,6 +338,7 @@ export function CoachApp() {
         sender_id: m.sender_id,
         text: m.message,
         created_at: m.created_at,
+        read_at: m.read_at,
         time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
         date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
       }))}));
@@ -384,6 +405,22 @@ export function CoachApp() {
     if(clientTab==="chat" && chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [scMessages, clientTab]);
 
+  useEffect(() => {
+    if (clientTab !== "chat" || !selectedClient || !coachProfile?.id) return;
+    const unreadIds = scMessages.filter(m => m.from === "client" && !m.read_at).map(m => m.id);
+    if (unreadIds.length === 0) return;
+    async function markRead() {
+      const now = new Date().toISOString();
+      const { error } = await supabase.from("messages").update({ read_at: now }).in("id", unreadIds);
+      if (error) { console.error("Mark read error:", error); return; }
+      setMessages(prev => ({...prev, [selectedClient]: (prev[selectedClient]||[]).map(m =>
+        unreadIds.includes(m.id) ? { ...m, read_at: now } : m
+      )}));
+      setUnreadCounts(prev => { const next = { ...prev }; delete next[selectedClient]; return next; });
+    }
+    markRead();
+  }, [clientTab, selectedClient, scMessages]);
+
   const scLocked = !scPrivacy.coachAccessEnabled;
 
   const LockedSection = ({label}) => (
@@ -410,7 +447,7 @@ export function CoachApp() {
       <nav className="nav">
         <div className="nav-inner">
           <div className="nav-logo">serenity</div>
-          <div className="nav-tabs" style={{overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none"}}>{clientTabs.map(t=><button key={t.id} className={`nav-tab${clientTab===t.id?" active":""}`} onClick={()=>setClientTab(t.id)}>{t.label}</button>)}</div>
+          <div className="nav-tabs" style={{overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none"}}>{clientTabs.map(t=><button key={t.id} className={`nav-tab${clientTab===t.id?" active":""}`} onClick={()=>setClientTab(t.id)}>{t.label}{t.id==="chat" && unreadCounts[selectedClient]>0 && <span className="unread-dot">{unreadCounts[selectedClient]}</span>}</button>)}</div>
           <div className="nav-right">
             <span className="nav-badge">🌿 Coach</span>
             <button className="nav-logout" onClick={onLogout}>Sign out</button>
@@ -693,7 +730,7 @@ export function CoachApp() {
               <div key={c.id} className={`client-list-card${selectedClient===c.id?" sel":""}`} style={{animationDelay:`${i*0.08}s`}} onClick={()=>setSelectedClient(c.id)}>
                 <div className="cl-avatar">{c.avatar}</div>
                 <div>
-                  <div className="cl-name">{c.name}</div>
+                  <div className="cl-name">{c.name}{unreadCounts[c.id]>0 && <span className="unread-dot">{unreadCounts[c.id]}</span>}</div>
                   <div className="cl-goal">{c.goal}</div>
                   <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
                     <span className={`pill ${todayPct>=70?"pill-green":todayPct>=40?"pill-orange":"pill-red"}`}>{todayPct}% today</span>

@@ -110,7 +110,7 @@ export function ClientApp() {
     all.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
     setMessages(all.map(m => ({
       id: m.id, from: m.sender_id === clientId ? "client" : "coach",
-      sender_id: m.sender_id, text: m.message, created_at: m.created_at,
+      sender_id: m.sender_id, text: m.message, created_at: m.created_at, read_at: m.read_at,
       time: new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
       date: new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
     })));
@@ -287,6 +287,7 @@ export function ClientApp() {
         sender_id:  m.sender_id,
         text:       m.message,
         created_at: m.created_at,
+        read_at:    m.read_at,
         time:       new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}),
         date:       new Date(m.created_at).toLocaleDateString([],{month:"short",day:"numeric"}),
       })));
@@ -298,9 +299,24 @@ export function ClientApp() {
     return () => clearInterval(interval);
   }, [clientId]);
 
+  const unreadCount = messages.filter(m => m.from === "coach" && !m.read_at).length;
+
   useEffect(()=>{
     if(tab==="chat" && chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, tab]);
+
+  useEffect(() => {
+    if (tab !== "chat" || unreadCount === 0 || !supabaseClient || !clientId || clientId.length <= 10) return;
+    const unreadIds = messages.filter(m => m.from === "coach" && !m.read_at).map(m => m.id);
+    async function markRead() {
+      const now = new Date().toISOString();
+      const { error } = await supabaseClient.from("messages")
+        .update({ read_at: now }).in("id", unreadIds);
+      if (error) { console.error("Mark read error:", error); return; }
+      setMessages(prev => prev.map(m => unreadIds.includes(m.id) ? { ...m, read_at: now } : m));
+    }
+    markRead();
+  }, [tab, unreadCount]);
 
   // Access gate: show subscription screen if expired
   if (!access.appAccess) {
@@ -339,6 +355,7 @@ export function ClientApp() {
               <button key={t.id} className={`nav-tab${tab===t.id?" active":""}`}
                 onClick={()=>setTab(t.id)}>
                 {t.label}
+                {t.id==="chat" && unreadCount>0 && <span className="unread-dot">{unreadCount}</span>}
               </button>
             ))}
           </div>

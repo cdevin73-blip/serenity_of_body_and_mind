@@ -14,6 +14,7 @@ export function QuizStep({ quizKey }) {
 
   return (
     <Quiz
+      key={quizKey}
       quizKey={QUIZ_KEY_MAP[quizKey]}
       mode="onboarding"
       doneLabel="Continue →"
