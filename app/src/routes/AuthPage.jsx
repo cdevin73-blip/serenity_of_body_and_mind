@@ -161,6 +161,9 @@ export function AuthPage() {
           Serenity of Body and Mind, LLC<br/>
           <a href="https://serenityofbodyandmind.com" target="_blank" rel="noreferrer" style={{color:"var(--light)"}}>serenityofbodyandmind.com</a>
         </p>
+        <p style={{fontSize:10,color:"var(--light)",textAlign:"center",marginTop:8,opacity:0.7}}>
+          Account security & email verification powered by <a href="https://supabase.com" target="_blank" rel="noreferrer" style={{color:"var(--light)"}}>Supabase</a>
+        </p>
       </div>
     </div>
   );
